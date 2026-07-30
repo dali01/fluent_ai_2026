@@ -1,19 +1,172 @@
 # Fluent AI
 
-A modern, multi-tenant SaaS CRM for print businesses — from small shops to
-printing plants. Client acquisition, quoting, production, inventory,
-scheduling and invoicing in one workspace, with AI woven through the
-workflows that matter (prepress checks, lead scoring, outreach drafts,
-forecasting).
+A multi-tenant SaaS CRM for print businesses — from small shops to printing
+plants. Client acquisition, quoting, production, inventory, scheduling and
+invoicing in one workspace, with AI doing the work a print shop actually
+can't: finding new customers before competitors do, catching artwork
+problems before they hit the press, and telling a rep who to call today.
+
+---
+
+## The AI edge
+
+Most "AI CRMs" bolt a chatbot onto a contact list. Fluent AI's AI does
+four specific jobs, each grounded in one architectural rule:
+
+> **Deterministic-first: the machine decides with code, Claude explains
+> in words.** Every score, verdict and price comes from pure, unit-tested
+> functions with an injected clock. Claude never invents a number, never
+> negotiates, and never sends anything on its own. That makes the AI
+> auditable, testable and cheap — and means a model change can't silently
+> alter your pipeline.
+
+### 1. Autonomous prospecting — leads that arrive while you sleep
+
+Fluent AI watches public signals for businesses that are about to need
+print, then does the qualifying work before a human looks:
+
+| Source                     | Signal                                           | Why a printer cares                                                                      |
+| -------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| **openFDA** (free, no key) | A drug application clears approval               | Cartons, package inserts, blister foil and pharmacy labels — procurement starts in weeks |
+| **Google Places**          | Established local businesses you've never quoted | Category-specific openings in your own city                                              |
+| **Permit/licence feeds**   | A business just opened or got licensed           | Signage, cards, menus, window graphics — needed immediately                              |
+
+Each discovered lead runs a deterministic gauntlet before it costs you
+anything:
+
+- **Relevance screening, fail-closed** — a bulk pharmaceutical ingredient
+  never becomes a "packaging lead", and competing print shops are
+  denylisted. Unknown categories are rejected, not guessed.
+- **Deduplication** — place-and-address identity for local sources,
+  sponsor-name identity for FDA, with token-set name normalization
+  (legal-suffix stripping, diacritics, `&`→`and`). Existing customers are
+  recognised and become **upsell signals** instead of duplicates.
+- **Deterministic scoring** — per-trigger weight tables with exponential
+  recency decay (a 30-day half-life for permits, 45 for FDA), so factors
+  visibly sum to the score. Every prospect row shows its own breakdown.
+- **A spend gate** — enrichment (contact lookup) only fires above a score
+  threshold and under a per-run cap, so you never pay to enrich noise.
+- **Idempotency you can prove** — a unique `(org, source, externalId)`
+  index plus watermarks that advance _only_ on success. Re-running a
+  source creates zero duplicates; the smoke test asserts it.
+
+**Claude's one job here:** turning the trigger into outreach copy that
+references the actual event ("your ANDA just cleared") rather than a
+generic pitch. Drafts are shown and copied — **never auto-sent**, because
+there's no consent model in the schema and cold email is a legal surface,
+not a feature.
+
+Runs unattended on Vercel Cron, per-org isolated, behind constant-time
+secret auth. Dismissing a prospect suppresses it from every future run.
+
+### 2. Customer insights — who to call today
+
+`/insights` ranks your existing customers on two deterministic signals:
+
+- **Reorder likelihood** — measured against each customer's _own_ median
+  cadence, not a global rule. A monthly menu customer 50 days silent is
+  due; an annual report client isn't. Past 2.5× their cadence the score
+  tapers away, because a customer silent for a year isn't "due" — they've
+  churned, and the churn signal owns them.
+- **Churn risk** — the worse of dormancy-against-own-rhythm and order
+  volume decline between consecutive 180-day windows.
+
+Neither ever reaches certainty (capped at 0.95); the future isn't a
+database column. **Claude's job:** on demand, turn the factors into a rep
+brief — what the numbers mean for _this_ customer, a concrete next step,
+and an opener grounded in their real order history.
+
+### 3. Prepress that speaks human
+
+Artwork checks are pure, deterministic file inspection — trim size against
+job spec (orientation-agnostic, with cutting tolerance), bleed box
+geometry, effective DPI at physical size, colour space, page-size
+consistency, and parse failures (corrupt or password-protected files).
+The verdict is never AI-generated.
+
+**Claude's job:** translate the results into an email-ready message a
+customer with no print background can act on, plus per-problem fix steps
+in their design tool. "Your trim box is 216×303 mm but the job is
+210×297 mm" becomes something you can actually send. Copy-to-clipboard,
+reviewed by you.
+
+### 4. A client portal that answers its own questions
+
+Customers get a tokenised portal — live job status, e-signature proof
+approval (with IP, user-agent and SHA-256 signature hash), artwork upload
+that runs prepress checks on arrival, and one-click reorder.
+
+The portal chatbot answers from a **company-scoped snapshot** assembled
+server-side from the bearer token: their open quotes with line items,
+their jobs, their unpaid invoices. It is read-only by construction — it
+cannot discount, reschedule, promise, or change an order, it quotes
+prices as-is, and prompt-injection attempts are declined. Cross-customer
+and cross-tenant data are structurally unreachable, not filtered out.
+
+### Cost accounting, built in
+
+Every Claude call runs through `runAiTask`, which drives an `AiTask` row
+from `RUNNING` to `SUCCEEDED`/`FAILED` and records model, token counts
+and computed cost in cents. Per-organization AI spend is a query, not a
+guess.
+
+---
+
+## The rest of the product
+
+**Sales** — companies and contacts with tags and reseller price tiers, a
+communication log, and a drag-and-drop pipeline kanban. Sourced prospects
+are deliberately fenced off the board until qualified.
+
+**Quoting** — a rules-based pricing engine (quantity breaks, stock
+surcharges, finishing, rush fees, setup fees, tier multipliers) with a
+live builder preview and a full breakdown stored on the quote. Quotes
+convert to jobs and invoices.
+
+**Production** — print-native job specs (stock, size in mm, colour mode,
+bleed, trim, finishing, binding), a status board from design through
+shipping, versioned artwork files with prepress results, and a proofing
+loop.
+
+**Operations** — inventory with a stock-movement ledger and low-stock
+warnings, automatic material deduction on job completion, and press
+scheduling that prevents double-booking under a serializable transaction.
+Plus vendors for outsourced finishing.
+
+**Finance** — invoices with deposits, payment-driven status transitions
+(never set by hand; overpayment rejected), per-job material-margin
+profitability, and an accounting-sync interface (stub today, QuickBooks/
+Xero drop-in later).
+
+**Notifications** — transactional email (proof requests, status changes)
+behind a provider interface: Resend when configured, console-logged
+otherwise, so the flow is testable without sending anything. SMS is a
+documented stub.
+
+**Per-org settings** — currency (display), pricing tiers and rules, and
+prospecting market configuration, all scoped to the organization.
+
+### Tenant isolation is the foundation
+
+Every tenant table carries `organizationId`, and all access goes through
+`tenantDb(orgId)` — a Prisma extension that rewrites queries **fail-closed**:
+reads are AND-fenced, creates are stamped, updates and deletes use
+extended unique-where clauses, and any unknown model or operation throws
+rather than passing through unscoped. Three raw-client exceptions exist
+and are documented in [DECISIONS.md](DECISIONS.md). Unit tests plus live
+cross-tenant probes in the smoke scripts prove a foreign org sees zero
+rows.
+
+---
 
 ## Stack
 
 - **Next.js** (App Router, TypeScript, full-stack — no separate API server)
-- **Neon** serverless Postgres via **Prisma** (driver adapter: `@prisma/adapter-neon`)
+- **Neon** serverless Postgres via **Prisma** (driver adapters: Neon in prod, node-postgres for localhost)
 - **Clerk** authentication — Clerk **Organizations** model tenants (1 org = 1 print business)
-- **Anthropic Claude** for AI features, server-side only
-- **Vercel** hosting (GitHub integration: `main` → production, PRs → previews), **Vercel Blob** file storage, **Vercel Cron** background jobs
-- **Tailwind CSS v4 + shadcn/ui**, Lucide icons
+- **Anthropic Claude** (Opus 5) for AI features, server-side only — keys never reach the browser
+- **Vercel** hosting (`main` → production, PRs → previews), **Vercel Blob** storage behind a swappable interface, **Vercel Cron** behind a queue-ready job interface
+- **Tailwind CSS v4 + shadcn/ui** (Base UI primitives), Lucide icons
 - **Zod** validation, **Vitest** unit tests, **Playwright** E2E
 - **pnpm** package manager
 
@@ -23,14 +176,18 @@ forecasting).
 corepack enable pnpm   # once, if pnpm is not installed
 pnpm install           # also runs `prisma generate` (postinstall)
 cp .env.example .env.local
-# Fill in .env.local — Clerk keys are required to run the app;
-# Neon URLs are required from Phase 1 onward.
+# Clerk keys + a database URL are required to run the app.
 pnpm dev
 ```
 
 Open http://localhost:3000 — public landing page. Sign in to reach the
 org-scoped dashboard at `/dashboard`. Users without an active organization
 are sent to `/select-org` to pick or create their print business.
+
+The app runs without any AI keys: `ANTHROPIC_API_KEY` gates the AI
+features (buttons report unavailability, the portal chat card hides), and
+prospecting connectors report `SKIPPED` until configured. openFDA needs
+no key at all.
 
 ### Clerk setup
 
@@ -53,10 +210,7 @@ DATABASE_URL=postgresql://postgres:fluent@localhost:5432/fluent
 DIRECT_URL=postgresql://postgres:fluent@localhost:5432/fluent
 ```
 
-Then `pnpm db:migrate && pnpm db:seed` (use `SEED_ORG_ID=<your Clerk org id>`
-to seed your real organization instead of the demo org), and optionally
-`pnpm exec tsx scripts/smoke-crm.ts` to smoke-test queries + tenant
-isolation against live data.
+Then `pnpm db:migrate && pnpm db:seed`.
 
 **Production (Neon)**:
 
@@ -64,6 +218,26 @@ isolation against live data.
 2. Copy the **pooled** connection string into `DATABASE_URL` and the
    **direct** connection string into `DIRECT_URL`
 3. `pnpm db:migrate && pnpm db:seed`
+
+### Demo data
+
+```bash
+SEED_ORG_ID=<clerk-org-id> SEED_MARKET=se pnpm exec tsx scripts/seed-demo.ts
+```
+
+Seeds a market-specific dataset — `se` (Swedish customers, SEK, 25% VAT,
+Jönköping prospecting) or `us` (US customers, USD, 8.25% sales tax,
+Austin prospecting) — with 8 companies whose order histories are
+deliberately time-shaped so `/insights` has a real story: one customer
+due to reorder, one churned, one declining, one healthy. Includes jobs
+across every production stage, kanban leads in every column, quotes and
+invoices in every state, low stock, press schedules, prospects and a
+portal link.
+
+- `scripts/reset-org.ts <orgId>` — clear one org's tenant data first
+  (keeps the org row and memberships)
+- `scripts/grant-org-access.ts <email>` — make a user admin of every
+  Clerk org
 
 ## Scripts
 
@@ -77,40 +251,50 @@ isolation against live data.
 | `pnpm test:e2e`  | Playwright E2E (needs `.env.local` + `pnpm exec playwright install chromium` once) |
 | `pnpm format`    | Prettier write                                                                     |
 
-Demo data: `SEED_ORG_ID=<org> SEED_MARKET=se|us pnpm exec tsx
-scripts/seed-demo.ts` seeds a market-specific dataset (Swedish/SEK or
-US/USD) with order histories shaped so `/insights` has something to
-show. `scripts/reset-org.ts <orgId>` clears one org's tenant data first.
-`scripts/grant-org-access.ts <email>` makes a user admin of every Clerk
-org.
-
 A Husky pre-commit hook runs `typecheck && lint && test`.
+
+**Smoke scripts** run the real data-access layer against a live database
+and assert behaviour end-to-end, including cross-tenant probes:
+`scripts/smoke-{crm,jobs,quotes,inventory,financials,prospecting,insights}.ts`.
+`smoke-prospecting.ts` is the dedupe proof — it ingests the same batch
+twice and asserts zero duplicate rows.
 
 ## Deploy (Vercel)
 
 The GitHub repo is connected to a Vercel project: pushing `main` deploys
-production; every PR gets a preview deploy. Set these env vars in Vercel
-(Project → Settings → Environment Variables): everything in
-[.env.example](.env.example) except the Clerk URL vars (those have safe
-defaults committed here, but setting them does no harm).
+production; every PR gets a preview deploy. Set the env vars from
+[.env.example](.env.example) in Project → Settings → Environment
+Variables. `CRON_SECRET` is required for the scheduled jobs to run at all
+(cron requests fail closed and return 404 without it).
+
+Scheduled jobs ([vercel.json](vercel.json)): FDA prospecting nightly,
+permits nightly, Places weekly, insights recompute nightly — staggered,
+each per-org isolated so one tenant's failure can't abort another's.
 
 ## Project layout
 
 ```
 app/(marketing)   public landing
 app/(auth)        Clerk sign-in / sign-up / org picker
-app/(app)         authenticated, org-scoped dashboard
-app/api           route handlers (webhooks, cron, AI) — from Phase 2+
-lib/db            Prisma client + tenant-scoped data access (Phase 1)
+app/(app)         authenticated, org-scoped app
+app/(portal)      tokenised client portal
+app/api           route handlers (files, cron, portal chat)
+lib/db            Prisma client + fail-closed tenant-scoped data access
 lib/auth          Clerk helpers (requireOrg)
-lib/ai            Claude client, AiTask runner, outreach/insights/prepress/chat (Phase 8)
-lib/insights      deterministic reorder + churn scoring → LeadScore (Phase 8b)
-lib/prospecting   lead sourcing: connectors, dedupe, scoring, pipeline (Phase 8)
-lib/jobs          cron auth, org fan-out (Phase 8)
+lib/ai            Claude client, AiTask cost runner, outreach/insights/prepress/chat
+lib/insights      deterministic reorder + churn scoring → LeadScore
+lib/prospecting   lead sourcing: connectors, dedupe, relevance, scoring, pipeline
+lib/prepress      deterministic artwork checks
+lib/pricing       pure pricing engine
+lib/jobs          cron auth, org fan-out
+lib/storage       Blob or local filesystem behind one interface
+lib/notifications email provider interface (Resend or console), SMS stub
+lib/portal        portal token resolution → tenant context
 prisma/           schema + migrations
 tests/unit        Vitest
 tests/e2e         Playwright
 ```
 
-See [DECISIONS.md](DECISIONS.md) for architecture decisions and
-[TODO-FUTURE.md](TODO-FUTURE.md) for deferred items.
+See [DECISIONS.md](DECISIONS.md) for architecture decisions,
+[docs/prospecting.md](docs/prospecting.md) for the prospecting design
+contract, and [TODO-FUTURE.md](TODO-FUTURE.md) for deferred items.
