@@ -19,3 +19,12 @@
 - **CI pipeline** — GitHub Actions running typecheck/lint/test/e2e on PRs
   (Phase 9 hardening; Vercel preview builds cover deployability until then).
 - **Playwright in CI** — needs Clerk test-mode keys and a seeded test org.
+- **Tenant-layer integration tests against a real Postgres** — the rewrite
+  logic is fully unit-tested; once Neon (or a local Postgres in CI) exists,
+  add integration tests exercising tenantDb() end-to-end.
+- **Nested-write connect validation** — top-level ops are org-fenced; add
+  defense-in-depth validation of nested `connect`/`connectOrCreate` IDs
+  (they can't move rows across orgs, but a malicious relation connect to
+  another org's parent row should throw rather than rely on FK+where).
+- **Per-org number sequences** — allocation helper for jobNumber /
+  quoteNumber / invoiceNumber (transactional, gap-tolerant).
