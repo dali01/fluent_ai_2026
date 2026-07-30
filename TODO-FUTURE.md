@@ -9,8 +9,23 @@
   OAuth flows later.
 - **SMS provider (Twilio)** — Phase 6 wires email (Resend) first; SMS stays
   behind the notification interface as a stub.
-- **Lead sourcing connectors** — ingestion interface + stub connector in
-  Phase 8; real scraping of business registrations/permits is future work.
+- **Lead sourcing / prospecting** — full design in
+  [docs/prospecting.md](docs/prospecting.md) (Phase 8). Deferred beyond
+  that design:
+
+  | Deferred                                                     | Why                                                                                                                               |
+  | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+  | Real permit/licence parser                                   | Pilot source URL/format supplied later; guessing now is guaranteed rework. Interface + stub ships.                                |
+  | HubSpot sync — recommend dropping entirely                   | Fluent AI _is_ the CRM. Not a phase-ordering deferral, a product rejection.                                                       |
+  | MCP-native enrichment                                        | Vendor MCP servers are interactive-OAuth-only; unattended cron has no consenting user. Drop-in when static-token auth appears.    |
+  | Cold-outreach sending + consent/suppression tracking         | CAN-SPAM/GDPR surface with no consent model in the schema. Drafts only.                                                           |
+  | Fuzzy matching (`pg_trgm`) + denormalized `Company.nameKey`  | Suffix stripping plus token-set equality covers realistic variance; a column on a live table plus a backfill isn't justified yet. |
+  | Places raw-payload purge job                                 | Enforces the content-caching window structurally.                                                                                 |
+  | Prospect detail route, pagination, saved views, bulk qualify | One page with collapsible rows and `take: 100` is the minimum useful surface.                                                     |
+  | Per-org prospecting config UI beyond the market form         | Cadence and per-source toggles can wait for a second market.                                                                      |
+  | Geocoding for the proximity score factor                     | Needs a geocoding provider; the factor is weight-zero until then.                                                                 |
+  | Consolidating the Resend call onto `http.ts`                 | Real cleanup, wrong PR.                                                                                                           |
+
 - **Clerk production instance** — running on dev-instance keys until a
   custom domain exists.
 - **Clerk webhook → Organization sync** — mirror org create/update/delete
