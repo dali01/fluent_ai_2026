@@ -70,45 +70,47 @@ export default async function CompaniesPage({
           <p>No companies yet. Create the first one.</p>
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>City</TableHead>
-              <TableHead>Contacts</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead>Tier</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {companies.map((company) => (
-              <TableRow key={company.id}>
-                <TableCell>
-                  <Link
-                    href={`/companies/${company.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {company.name}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  {company.isReseller ? (
-                    <Badge variant="secondary">Reseller</Badge>
-                  ) : (
-                    <span className="text-muted-foreground">Client</span>
-                  )}
-                </TableCell>
-                <TableCell>{company.city ?? "—"}</TableCell>
-                <TableCell>{company._count.contacts}</TableCell>
-                <TableCell>
-                  <TagList tags={company.tags} />
-                </TableCell>
-                <TableCell>{company.priceTier?.name ?? "—"}</TableCell>
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>City</TableHead>
+                <TableHead>Contacts</TableHead>
+                <TableHead>Tags</TableHead>
+                <TableHead>Tier</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {companies.map((company) => (
+                <TableRow key={company.id}>
+                  <TableCell>
+                    <Link
+                      href={`/companies/${company.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {company.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    {company.isReseller ? (
+                      <Badge variant="secondary">Reseller</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">Client</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{company.city ?? "—"}</TableCell>
+                  <TableCell>{company._count.contacts}</TableCell>
+                  <TableCell>
+                    <TagList tags={company.tags} />
+                  </TableCell>
+                  <TableCell>{company.priceTier?.name ?? "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

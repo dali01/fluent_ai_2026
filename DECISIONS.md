@@ -96,8 +96,13 @@ Running log — newest last. Format: date, decision, why.
 - **Logo** (`components/brand/logo.tsx`): three overlapping CMYK dots with
   an ink center — a print registration mark. Favicon = `app/icon.svg`
   (same mark on ink background); default Next favicon removed.
-- **Typography stays Geist** (sans + mono) — modern, neutral, already
-  wired via next/font.
+- **Typography (revised in 2.5b):** Inter for UI/body, Schibsted Grotesk
+  for headings (`--font-heading`, applied to h1–h4 globally), Geist Mono
+  for numbers/code. Radius bumped to 0.75rem.
+- **App shell (2.5b):** grouped sidebar nav (Sales / Production /
+  Finance), content on `bg-muted/30` with a max-w-6xl column, sticky
+  blurred header. Dashboard is data-driven: stat cards + pipeline-by-stage
+  bars + recent activity.
 - All colors flow through the shadcn/Tailwind v4 tokens in
   `app/globals.css` — no hardcoded hex in components (the logo/gradient
   use explicit oklch because SVG/inline-gradients can't read CSS vars in
