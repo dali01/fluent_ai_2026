@@ -43,6 +43,7 @@ model Organization {
   pricingRules   PricingRule[]
   inventoryItems InventoryItem[]
   stockMovements StockMovement[]
+  jobMaterials   JobMaterial[]
   presses        Press[]
   scheduleBlocks ScheduleBlock[]
   vendors        Vendor[]
@@ -245,6 +246,7 @@ model Job {
   stockMovements StockMovement[]
   scheduleBlocks ScheduleBlock[]
   activityLogs   ActivityLog[]
+  materials      JobMaterial[]
 
   @@unique([organizationId, jobNumber])
   @@index([organizationId])
@@ -455,9 +457,30 @@ model InventoryItem {
 
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   stockMovements StockMovement[]
+  jobMaterials   JobMaterial[]
 
   @@index([organizationId])
   @@index([organizationId, type])
+}
+
+/// Planned material consumption for a job. When the job reaches DONE these
+/// are converted to JOB_CONSUMPTION stock movements (auto-deduct).
+model JobMaterial {
+  id              String   @id @default(cuid())
+  organizationId  String
+  jobId           String
+  inventoryItemId String
+  quantityPlanned Decimal  @db.Decimal(12, 3)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  job           Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, inventoryItemId])
+  @@index([organizationId])
+  @@index([jobId])
 }
 
 enum StockMovementReason {

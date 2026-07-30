@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Copy, Download, Pencil } from "lucide-react";
 import { ArchiveButton } from "@/components/crm/archive-button";
+import { JobMaterialsCard } from "@/components/jobs/job-materials-card";
 import { JobStatusBadge } from "@/components/jobs/job-status-badge";
 import { PrepressReport } from "@/components/jobs/prepress-report";
 import {
@@ -43,6 +44,14 @@ export default async function JobDetailPage({
         },
       },
       press: { select: { name: true } },
+      materials: {
+        include: { inventoryItem: { select: { name: true, unit: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+      stockMovements: {
+        where: { reason: "JOB_CONSUMPTION" },
+        select: { inventoryItemId: true },
+      },
       files: { orderBy: [{ fileName: "asc" }, { version: "desc" }] },
       proofs: {
         orderBy: { createdAt: "desc" },
@@ -55,11 +64,21 @@ export default async function JobDetailPage({
   });
   if (!job || job.deletedAt) notFound();
 
-  const activities = await db.activityLog.findMany({
-    where: { jobId: id },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-  });
+  const [activities, inventoryItems] = await Promise.all([
+    db.activityLog.findMany({
+      where: { jobId: id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
+    db.inventoryItem.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, unit: true },
+    }),
+  ]);
+  const consumedItemIds = new Set(
+    job.stockMovements.map((m) => m.inventoryItemId),
+  );
 
   const defaultContactId = job.company.contacts[0]?.id ?? null;
 
@@ -165,6 +184,19 @@ export default async function JobDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <JobMaterialsCard
+        jobId={job.id}
+        jobDone={job.status === "DONE"}
+        materials={job.materials.map((m) => ({
+          id: m.id,
+          itemName: m.inventoryItem.name,
+          unit: m.inventoryItem.unit,
+          quantityPlanned: Number(m.quantityPlanned),
+          consumed: consumedItemIds.has(m.inventoryItemId),
+        }))}
+        items={inventoryItems}
+      />
 
       <Card>
         <CardHeader>

@@ -13,6 +13,7 @@ import {
   Printer,
   Receipt,
   Settings,
+  Truck,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ const navGroups: Array<{
       { href: "/jobs", label: "Jobs", icon: Printer },
       { href: "/schedule", label: "Schedule", icon: CalendarDays },
       { href: "/inventory", label: "Inventory", icon: Boxes },
+      { href: "/vendors", label: "Vendors", icon: Truck },
     ],
   },
   {
