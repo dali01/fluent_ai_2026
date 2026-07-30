@@ -132,9 +132,25 @@ async function main() {
     });
   }
 
+  // Demo portal access for Clara (City Festival has jobs to show)
+  async function ensurePortalToken() {
+    const clara = await t.contact.findFirst({
+      where: { email: "clara@cityfest.example" },
+    });
+    const token = `demo-portal-${ORG_ID.slice(-12)}-clara`;
+    if (clara && clara.portalToken !== token) {
+      await t.contact.update({
+        where: { id: clara.id },
+        data: { portalToken: token },
+      });
+      console.log(`Portal link: /portal/${token}`);
+    }
+  }
+
   // Companies (idempotent-ish: skip if any exist)
   const existingCompanies = await t.company.count();
   if (existingCompanies > 0) {
+    await ensurePortalToken();
     console.log("Seed: companies already present, skipping business data.");
     return;
   }
@@ -417,6 +433,7 @@ async function main() {
     ],
   });
 
+  await ensurePortalToken();
   console.log(`Seed complete for organization ${ORG_ID} (${ORG_NAME}).`);
 }
 

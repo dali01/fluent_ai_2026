@@ -41,7 +41,7 @@ export function PortalUploadForm({
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-wrap gap-2">
-      <Select name="jobId" defaultValue={jobs[0]?.id ?? ""}>
+      <Select name="jobId" defaultValue="">
         <SelectTrigger className="w-64">
           <SelectValue placeholder="Pick order" />
         </SelectTrigger>
