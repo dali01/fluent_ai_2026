@@ -103,6 +103,30 @@ Running log — newest last. Format: date, decision, why.
   Finance), content on `bg-muted/30` with a max-w-6xl column, sticky
   blurred header. Dashboard is data-driven: stat cards + pipeline-by-stage
   bars + recent activity.
+
+## 2026-07-30 — Phase 3
+
+- **Storage behind lib/storage `FileStorage`** — Vercel Blob when
+  `BLOB_READ_WRITE_TOKEN` is set, local disk (`.uploads/`, served by an
+  org-fenced `/api/files/[...key]` route) otherwise. Keys are always
+  `orgId/jobId/vN-name`; the org prefix is part of tenant isolation.
+  Blob uses public-but-unguessable URLs for now (private access on TODO).
+- **Prepress = deterministic only** (lib/prepress): format allowlist
+  (PDF/TIFF/PNG/JPEG), PDF trim-vs-spec (±1.5 mm, orientation-agnostic),
+  bleed-box math, page-size consistency; raster effective-DPI at job size
+  (300 pass / 150 warn floor) and CMYK-vs-RGB. Checks run synchronously in
+  the upload action (fast, no queue needed). Claude explains results in
+  Phase 8 — it never decides them.
+- **Proof approvals are CSR-recorded until Phase 6** — the portal brings
+  client self-serve approval + e-signature record; the model already
+  supports it.
+- **Job numbers**: max+1 per org at creation (#2001 seeds the sequence).
+  Race window is acceptable at shop scale; unique constraint catches
+  collisions.
+- **Approve proof → job auto-moves to PREPRESS**; send proof → PROOFING.
+  Other status moves are manual on the board.
+- **Server-action body limit raised to 50 MB** (artwork uploads), file cap
+  40 MB per upload.
 - All colors flow through the shadcn/Tailwind v4 tokens in
   `app/globals.css` — no hardcoded hex in components (the logo/gradient
   use explicit oklch because SVG/inline-gradients can't read CSS vars in
