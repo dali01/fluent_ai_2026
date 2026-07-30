@@ -112,7 +112,11 @@ export function InsightRow({ insight }: { insight: InsightRowData }) {
             >
               Open company
             </Button>
-            <span className="ml-auto text-xs text-muted-foreground">
+            {/* local-TZ formatting differs between server and client render */}
+            <span
+              className="ml-auto text-xs text-muted-foreground"
+              suppressHydrationWarning
+            >
               computed {new Date(insight.computedAt).toLocaleString("sv-SE")}
             </span>
           </div>
