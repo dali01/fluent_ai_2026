@@ -36,5 +36,11 @@ export interface ProspectSource {
   readonly label: string;
   /** false when env missing → run is SKIPPED, not FAILED */
   isConfigured(): boolean;
+  /**
+   * Human-readable reason isConfigured() is false, undefined when the
+   * source is ready. A skipped run must be able to say WHY — a manual
+   * "run now" that silently succeeds while doing nothing is a bug.
+   */
+  unavailableReason(): string | undefined;
   fetchBatch(ctx: SourceContext): Promise<SourceResult>;
 }

@@ -12,6 +12,9 @@ import { type ActionResult, actionOk, parseForm } from "./form";
 
 const settingsFormSchema = z.object({
   enabled: z.boolean().default(false),
+  source_fda: z.boolean().default(false),
+  source_places: z.boolean().default(false),
+  source_permit: z.boolean().default(false),
   city: z.string().trim().max(100).default(""),
   country: z.string().trim().max(2).toUpperCase().or(z.literal("")).default(""),
   /** one query per line */
@@ -26,7 +29,7 @@ export async function saveProspectingSettings(
 ): Promise<ActionResult> {
   const { orgId } = await requireOrg();
   const { data, result } = parseForm(settingsFormSchema, formData, {
-    booleans: ["enabled"],
+    booleans: ["enabled", "source_fda", "source_places", "source_permit"],
   });
   if (!data) return result!;
 
@@ -34,6 +37,11 @@ export async function saveProspectingSettings(
   const next = {
     ...current,
     enabled: data.enabled,
+    sources: {
+      fda: data.source_fda,
+      places: data.source_places,
+      permit: data.source_permit,
+    },
     market: {
       ...(current.market ?? { country: "SE", city: "" }),
       country: data.country || current.market?.country || "SE",

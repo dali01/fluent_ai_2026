@@ -22,7 +22,7 @@
   | Fuzzy matching (`pg_trgm`) + denormalized `Company.nameKey`  | Suffix stripping plus token-set equality covers realistic variance; a column on a live table plus a backfill isn't justified yet. |
   | Places raw-payload purge job                                 | Enforces the content-caching window structurally.                                                                                 |
   | Prospect detail route, pagination, saved views, bulk qualify | One page with collapsible rows and `take: 100` is the minimum useful surface.                                                     |
-  | Per-org prospecting config UI beyond the market form         | Cadence and per-source toggles can wait for a second market.                                                                      |
+  | Per-org run cadence (schedules per agent)                    | Per-agent on/off toggles shipped; per-org _schedules_ need the queue migration, not another cron path.                            |
   | Geocoding for the proximity score factor                     | Needs a geocoding provider; the factor is weight-zero until then.                                                                 |
   | Consolidating the Resend call onto `http.ts`                 | Real cleanup, wrong PR.                                                                                                           |
 

@@ -112,9 +112,17 @@ export function createPlacesSource(config: PlacesQueryConfig): ProspectSource {
     label: "Google Places discovery",
 
     isConfigured() {
-      return (
-        Boolean(process.env.GOOGLE_PLACES_API_KEY) && config.queries.length > 0
-      );
+      return this.unavailableReason() === undefined;
+    },
+
+    unavailableReason() {
+      if (!process.env.GOOGLE_PLACES_API_KEY) {
+        return "GOOGLE_PLACES_API_KEY is not set on this deployment";
+      }
+      if (config.queries.length === 0) {
+        return "no Places queries configured — add them under Settings → Prospecting";
+      }
+      return undefined;
     },
 
     async fetchBatch(ctx: SourceContext): Promise<SourceResult> {

@@ -304,3 +304,28 @@ Running log — newest last. Format: date, decision, why.
 - **Reorder likelihood tapers past 2.5× cadence** (0 by 5×): a customer
   silent for a year is churned, not "due". Without the taper, dead
   accounts topped the reorder list.
+
+## 2026-07-30 — Per-org discovery agents
+
+- **Which agents an org runs is org config, not deployment config**:
+  `Organization.settings.prospecting.sources` ({fda, places, permit}).
+  It is deliberately separate from the master `enabled` switch — that
+  turns prospecting off entirely; these pick the agents. `permit`
+  defaults **off** because its connector is still a stub.
+- **Three named gates, each with a reason**: org switch → agent toggle →
+  connector readiness. Precedence is that order, so the message a user
+  sees names the thing *they* can fix first.
+- **`unavailableReason()` joins the connector interface.** `isConfigured()`
+  alone could only say no, which produced the worst possible UX: a
+  manual "Run" that reported success while doing nothing, because an
+  unconfigured source returns `SKIPPED` with `ok: true` (correct for
+  cron, misleading for a human). Reasons name the exact env var or
+  setting, are asserted never to disagree with `isConfigured()`, and are
+  persisted on the `SourceRun` row.
+- **`runProspectSourceNow` returns the outcome, not a boolean** — status
+  plus counts, or the skip reason. Skips toast as warnings, successes
+  report `fetched/created/duplicates/screenedOut`.
+- **Source identities live in a pure `sources/meta.ts`** so the settings
+  form can render the agent list client-side; `sources/index.ts` (which
+  constructs connectors and pulls in fetch plumbing) re-exports it. Same
+  rule as `lib/format` vs `lib/db`.

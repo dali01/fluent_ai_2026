@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -9,9 +11,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/crm/form-field";
 import type { ActionResult } from "@/lib/actions/form";
 import { saveProspectingSettings } from "@/lib/actions/prospecting-settings";
+import {
+  SOURCE_IDS,
+  SOURCE_META,
+  type SourceId,
+} from "@/lib/prospecting/sources/meta";
+
+export type SourceAvailability = {
+  id: SourceId;
+  enabled: boolean;
+  /** undefined when the connector is ready to run */
+  unavailableReason?: string;
+};
 
 export function ProspectingSettingsForm({
   initial,
+  sources,
 }: {
   initial: {
     enabled: boolean;
@@ -21,6 +36,7 @@ export function ProspectingSettingsForm({
     minScore: number;
     maxPerRun: number;
   };
+  sources: SourceAvailability[];
 }) {
   const [state, formAction, pending] = useActionState(
     async (prev: ActionResult | null, formData: FormData) => {
@@ -31,9 +47,10 @@ export function ProspectingSettingsForm({
     null,
   );
   const errors = state && !state.ok ? (state.fieldErrors ?? {}) : {};
+  const byId = new Map(sources.map((s) => [s.id, s]));
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-4">
+    <form action={formAction} className="flex max-w-2xl flex-col gap-5">
       <div className="flex items-center gap-2">
         <Checkbox
           id="prospecting-enabled"
@@ -44,6 +61,60 @@ export function ProspectingSettingsForm({
           Enable prospecting for this organization
         </Label>
       </div>
+
+      {/* Per-org agent selection — the master switch above turns
+          everything off; these pick which agents run. */}
+      <fieldset className="flex flex-col gap-3">
+        <legend className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          Discovery agents
+        </legend>
+        {SOURCE_IDS.map((id) => {
+          const meta = SOURCE_META[id];
+          const state = byId.get(id);
+          const unavailable = state?.unavailableReason;
+          return (
+            <div key={id} className="flex items-start gap-2.5">
+              <Checkbox
+                id={`source-${id}`}
+                name={`source_${id}`}
+                defaultChecked={state?.enabled ?? meta.defaultEnabled}
+                className="mt-0.5"
+              />
+              <div className="flex flex-col gap-0.5">
+                <Label
+                  htmlFor={`source-${id}`}
+                  className="flex flex-wrap items-center gap-2"
+                >
+                  {meta.label}
+                  {meta.stub ? (
+                    <Badge variant="outline" className="px-1.5 py-0 text-xs">
+                      stub
+                    </Badge>
+                  ) : null}
+                  {!meta.requiresEnv ? (
+                    <Badge variant="secondary" className="px-1.5 py-0 text-xs">
+                      no key needed
+                    </Badge>
+                  ) : null}
+                </Label>
+                <span className="text-xs text-muted-foreground">
+                  {meta.watches} — {meta.value}
+                </span>
+                {unavailable ? (
+                  <span className="flex items-start gap-1.5 text-xs text-chart-3">
+                    <AlertTriangle
+                      className="mt-0.5 size-3 shrink-0"
+                      aria-hidden
+                    />
+                    {unavailable}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </fieldset>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField
           label="Pilot market city"

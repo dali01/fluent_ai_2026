@@ -126,6 +126,14 @@ export const mcpSource: ProspectSource = {
     );
   },
 
+  unavailableReason() {
+    if (!process.env.PROSPECT_MCP_URL) return "PROSPECT_MCP_URL is not set";
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return "ANTHROPIC_API_KEY is not set";
+    }
+    return undefined;
+  },
+
   async fetchBatch(ctx: SourceContext): Promise<SourceResult> {
     const client = getAiClient();
     const response = await client.beta.messages.create({

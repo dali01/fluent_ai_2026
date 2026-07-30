@@ -192,10 +192,26 @@ export async function draftProspectOutreach(
   }
 }
 
-/** Manual trigger — calls the SAME function the cron route calls. */
+export type RunSourceResult =
+  | {
+      ok: true;
+      status: "SUCCEEDED" | "PARTIAL";
+      created: number;
+      duplicates: number;
+      screenedOut: number;
+      fetched: number;
+    }
+  | { ok: true; status: "SKIPPED"; reason: string }
+  | { ok: false; error: string };
+
+/**
+ * Manual trigger — calls the SAME function the cron route calls, and
+ * reports what actually happened. Returning a bare success for a SKIPPED
+ * run made the button look broken (it "worked" and did nothing).
+ */
 export async function runProspectSourceNow(
   sourceId: string,
-): Promise<ActionResult> {
+): Promise<RunSourceResult> {
   const { orgId } = await requireOrg();
   if (!isSourceId(sourceId)) {
     return { ok: false, error: `Unknown source: ${sourceId}` };
@@ -203,8 +219,23 @@ export async function runProspectSourceNow(
 
   const result = await runProspectSource(orgId, sourceId);
   revalidatePath("/prospects");
+
   if (result.status === "FAILED") {
     return { ok: false, error: result.error ?? "Run failed" };
   }
-  return actionOk;
+  if (result.status === "SKIPPED") {
+    return {
+      ok: true,
+      status: "SKIPPED",
+      reason: result.reason ?? "source unavailable",
+    };
+  }
+  return {
+    ok: true,
+    status: result.status,
+    created: result.created,
+    duplicates: result.duplicates,
+    screenedOut: result.screenedOut,
+    fetched: result.fetched,
+  };
 }

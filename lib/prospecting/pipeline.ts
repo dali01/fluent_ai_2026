@@ -1,7 +1,7 @@
 import { readProspectingConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
 import { ingestBatch } from "./ingest";
-import { getSource, type SourceId } from "./sources";
+import { getSource, SOURCE_ENUM, type SourceId } from "./sources";
 import type { SourceResult } from "./sources/types";
 
 /**
@@ -10,12 +10,6 @@ import type { SourceResult } from "./sources/types";
  * Response dependency — callable from the cron route AND the manual
  * "run now" server action identically. docs/prospecting.md §8.
  */
-
-const SOURCE_ENUM: Record<SourceId, "FDA" | "PLACES" | "PERMIT"> = {
-  fda: "FDA",
-  places: "PLACES",
-  permit: "PERMIT",
-};
 
 const MAX_PER_RUN = Number(process.env.PROSPECT_MAX_PER_RUN ?? "200");
 
@@ -28,6 +22,8 @@ export type RunSummary = {
   screenedOut: number;
   enriched: number;
   error?: string;
+  /** why a SKIPPED run did nothing — surfaced verbatim in the UI */
+  reason?: string;
 };
 
 export async function runProspectSource(
@@ -46,15 +42,22 @@ export async function runProspectSource(
     radiusMeters: config.market?.radiusMeters,
   });
 
-  if (!config.enabled || !source.isConfigured()) {
+  // Three independent gates, each with its own reason: the org-wide
+  // switch, this org's choice of agents, and the connector's own
+  // readiness. A skip must always be able to explain itself.
+  const reason = !config.enabled
+    ? "prospecting is disabled for this organization — enable it under Settings → Prospecting"
+    : !config.sources[sourceId]
+      ? `the ${sourceId} agent is switched off for this organization — enable it under Settings → Prospecting`
+      : source.unavailableReason();
+
+  if (reason) {
     await db.sourceRun.create({
       data: {
         organizationId: orgId,
         source: sourceEnum,
         status: "SKIPPED",
-        error: !config.enabled
-          ? "prospecting disabled for org"
-          : "source not configured",
+        error: reason.slice(0, 500),
         finishedAt: now,
       },
     });
@@ -66,6 +69,7 @@ export async function runProspectSource(
       duplicates: 0,
       screenedOut: 0,
       enriched: 0,
+      reason,
     };
   }
 

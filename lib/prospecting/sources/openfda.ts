@@ -123,6 +123,10 @@ export const openFdaSource: ProspectSource = {
     return true; // keyless; OPENFDA_API_KEY only raises rate limits
   },
 
+  unavailableReason() {
+    return undefined; // always available
+  },
+
   async fetchBatch(ctx: SourceContext): Promise<SourceResult> {
     const today = new Date();
     // ~3-day overlap: openFDA backfills records late
