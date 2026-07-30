@@ -33,6 +33,7 @@ export const TENANT_MODELS = new Set([
   "PricingRule",
   "InventoryItem",
   "StockMovement",
+  "JobMaterial",
   "Press",
   "ScheduleBlock",
   "Vendor",
