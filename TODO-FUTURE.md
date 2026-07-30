@@ -51,4 +51,10 @@
   prop log an a11y warning in dev; audit and set nativeButton={false}
   where appropriate.
 - **Portal storefront v2** — quantity/spec tweaks on reorder, new-product
-  ordering, AI quote chatbot (Phase 8).
+  ordering (the AI quote chatbot shipped in Phase 8b).
+- **Remaining AiTask kinds** — BATCHING_SUGGESTION, TURNAROUND_ESTIMATE,
+  WASTE_ESTIMATE, DEMAND_FORECAST are reserved in the enum but unbuilt;
+  each needs a deterministic base (like lib/insights) before Claude gets
+  to explain anything.
+- **Portal chat persistence** — turns are browser-local today (AiTask
+  logs each call); persist threads if shops want to review conversations.

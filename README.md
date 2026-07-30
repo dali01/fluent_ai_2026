@@ -96,7 +96,8 @@ app/(app)         authenticated, org-scoped dashboard
 app/api           route handlers (webhooks, cron, AI) — from Phase 2+
 lib/db            Prisma client + tenant-scoped data access (Phase 1)
 lib/auth          Clerk helpers (requireOrg)
-lib/ai            Claude client, AiTask runner, outreach drafting (Phase 8)
+lib/ai            Claude client, AiTask runner, outreach/insights/prepress/chat (Phase 8)
+lib/insights      deterministic reorder + churn scoring → LeadScore (Phase 8b)
 lib/prospecting   lead sourcing: connectors, dedupe, scoring, pipeline (Phase 8)
 lib/jobs          cron auth, org fan-out (Phase 8)
 prisma/           schema + migrations
