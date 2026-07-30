@@ -72,7 +72,7 @@ export function PaymentDialog({
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-4">
           <FormField
-            label={`Amount (kr) — ${remaining.toLocaleString("sv-SE")} remaining`}
+            label={`Amount — ${remaining.toLocaleString("sv-SE")} remaining`}
             name="amount"
             type="number"
             step="0.01"

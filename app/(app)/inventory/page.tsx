@@ -13,13 +13,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireOrg } from "@/lib/auth/require-org";
+import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
+import { formatMoney } from "@/lib/format/money";
 
 export const metadata = { title: "Inventory" };
 
 export default async function InventoryPage() {
   const { orgId } = await requireOrg();
   const db = tenantDb(orgId);
+  const { currency } = await readGeneralConfig(orgId);
 
   const [items, movements] = await Promise.all([
     db.inventoryItem.findMany({
@@ -109,7 +112,7 @@ export default async function InventoryPage() {
                     </TableCell>
                     <TableCell className="text-right font-mono">
                       {item.costPerUnit
-                        ? `${Number(item.costPerUnit).toLocaleString("sv-SE")} kr`
+                        ? formatMoney(item.costPerUnit, currency)
                         : "—"}
                     </TableCell>
                     <TableCell>

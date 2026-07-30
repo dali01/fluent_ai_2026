@@ -85,7 +85,7 @@ export function NewLeadDialog({
               </Select>
             </div>
             <FormField
-              label="Value (kr)"
+              label="Value"
               name="value"
               type="number"
               min={0}

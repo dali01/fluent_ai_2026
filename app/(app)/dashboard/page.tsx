@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOrg } from "@/lib/auth/require-org";
+import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
+import { formatMoney } from "@/lib/format/money";
 import { LEAD_STAGES } from "@/lib/validation/crm";
 
 export const metadata = { title: "Dashboard" };
@@ -37,6 +39,7 @@ export default async function DashboardPage() {
     openLeads,
     activeJobs,
     recentActivity,
+    general,
   ] = await Promise.all([
     client.organizations.getOrganization({ organizationId: orgId }),
     db.contact.count({ where: { deletedAt: null } }),
@@ -58,6 +61,7 @@ export default async function DashboardPage() {
       take: 6,
       include: { contact: { select: { firstName: true, lastName: true } } },
     }),
+    readGeneralConfig(orgId),
   ]);
 
   const pipelineValue = openLeads.reduce(
@@ -72,7 +76,7 @@ export default async function DashboardPage() {
   const stats = [
     {
       label: "Open pipeline",
-      value: `${pipelineValue.toLocaleString("sv-SE")} kr`,
+      value: formatMoney(pipelineValue, general.currency),
       icon: KanbanSquare,
       chip: "bg-chart-1/10 text-chart-1",
       href: "/pipeline",

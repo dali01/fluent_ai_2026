@@ -10,7 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireOrg } from "@/lib/auth/require-org";
+import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
+import { formatMoney } from "@/lib/format/money";
 
 export const metadata = { title: "Invoices" };
 
@@ -26,6 +28,7 @@ const STATUS_VARIANT: Record<string, "secondary" | "destructive" | "outline"> =
 
 export default async function InvoicesPage() {
   const { orgId } = await requireOrg();
+  const { currency } = await readGeneralConfig(orgId);
 
   const invoices = await tenantDb(orgId).invoice.findMany({
     where: { deletedAt: null },
@@ -107,11 +110,11 @@ export default async function InvoicesPage() {
                   </TableCell>
                   <TableCell className="text-right font-mono">
                     {invoice.depositAmount
-                      ? `${Number(invoice.depositAmount).toLocaleString("sv-SE")} kr`
+                      ? formatMoney(invoice.depositAmount, currency)
                       : "—"}
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {Number(invoice.total).toLocaleString("sv-SE")} kr
+                    {formatMoney(invoice.total, currency)}
                   </TableCell>
                 </TableRow>
               ))}

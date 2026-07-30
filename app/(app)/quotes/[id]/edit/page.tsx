@@ -4,6 +4,7 @@ import {
   QuoteBuilder,
 } from "@/components/quotes/quote-builder";
 import { requireOrg } from "@/lib/auth/require-org";
+import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
 import type { EngineRule } from "@/lib/pricing/engine";
 
@@ -56,6 +57,7 @@ export default async function EditQuotePage({
         quoteId={quote.id}
         companies={builderCompanies}
         rules={engineRules}
+        currency={(await readGeneralConfig(orgId)).currency}
         initial={{
           companyId: quote.companyId,
           rush: breakdown?.rush ?? false,

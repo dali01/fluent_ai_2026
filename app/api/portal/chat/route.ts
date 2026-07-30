@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isAiEnabled } from "@/lib/ai/client";
 import { answerPortalChat, type ChatTurn } from "@/lib/ai/portal-chat";
+import { readGeneralConfig } from "@/lib/db/org-settings";
 import { resolvePortalToken } from "@/lib/portal/auth";
 
 /**
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
   }
 
   const companyId = portal.company.id;
-  const [quotes, jobs, invoices] = await Promise.all([
+  const [general, quotes, jobs, invoices] = await Promise.all([
+    readGeneralConfig(portal.orgId),
     portal.db.quote.findMany({
       where: {
         companyId,
@@ -99,7 +101,12 @@ export async function POST(request: Request) {
       companyName: portal.company.name,
       contactFirstName: portal.contact.firstName,
       context: JSON.parse(
-        JSON.stringify({ quotes, jobsInProduction: jobs, openInvoices: invoices }),
+        JSON.stringify({
+          currency: general.currency,
+          quotes,
+          jobsInProduction: jobs,
+          openInvoices: invoices,
+        }),
       ),
       messages: parsed.data.messages as ChatTurn[],
     });

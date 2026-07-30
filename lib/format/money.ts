@@ -7,7 +7,8 @@ import type { Currency } from "@/lib/db/org-settings";
  * a display concern, not a conversion.
  */
 export function formatMoney(
-  amount: number | string | null | undefined,
+  // number, numeric string, or Prisma Decimal — anything Number() takes
+  amount: number | string | { toString(): string } | null | undefined,
   currency: Currency = "SEK",
 ): string {
   const n = Number(amount ?? 0);

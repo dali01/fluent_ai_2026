@@ -18,13 +18,12 @@ import {
   createJobFromQuote,
 } from "@/lib/actions/quotes";
 import { requireOrg } from "@/lib/auth/require-org";
+import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
+import { formatMoney } from "@/lib/format/money";
 import { QUOTE_TRANSITIONS } from "@/lib/validation/quotes";
 
 export const metadata = { title: "Quote" };
-
-const kr = (n: unknown) =>
-  `${Number(n).toLocaleString("sv-SE", { maximumFractionDigits: 2 })} kr`;
 
 export default async function QuoteDetailPage({
   params,
@@ -33,6 +32,8 @@ export default async function QuoteDetailPage({
 }) {
   const { orgId } = await requireOrg();
   const { id } = await params;
+  const { currency } = await readGeneralConfig(orgId);
+  const kr = (n: unknown) => formatMoney(Number(n), currency);
 
   const quote = await tenantDb(orgId).quote.findUnique({
     where: { id },

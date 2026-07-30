@@ -3,6 +3,7 @@ import {
   QuoteBuilder,
 } from "@/components/quotes/quote-builder";
 import { requireOrg } from "@/lib/auth/require-org";
+import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
 import type { EngineRule } from "@/lib/pricing/engine";
 
@@ -20,6 +21,7 @@ export default async function NewQuotePage() {
     }),
     db.pricingRule.findMany({ where: { active: true } }),
   ]);
+  const { currency } = await readGeneralConfig(orgId);
 
   const builderCompanies: BuilderCompany[] = companies.map((c) => ({
     id: c.id,
@@ -37,7 +39,11 @@ export default async function NewQuotePage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">New quote</h1>
-      <QuoteBuilder companies={builderCompanies} rules={engineRules} />
+      <QuoteBuilder
+        companies={builderCompanies}
+        rules={engineRules}
+        currency={currency}
+      />
     </div>
   );
 }

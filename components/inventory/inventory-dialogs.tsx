@@ -118,7 +118,7 @@ export function InventoryItemDialog({ item }: { item?: ItemForDialog }) {
               required
             />
             <FormField
-              label="Cost per unit (kr)"
+              label="Cost per unit"
               name="costPerUnit"
               type="number"
               step="0.01"

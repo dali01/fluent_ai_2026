@@ -4,6 +4,7 @@ import {
   type PipelineLead,
 } from "@/components/crm/pipeline-board";
 import { requireOrg } from "@/lib/auth/require-org";
+import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
 import { LEAD_STAGES } from "@/lib/validation/crm";
 
@@ -13,7 +14,7 @@ export default async function PipelinePage() {
   const { orgId } = await requireOrg();
   const db = tenantDb(orgId);
 
-  const [leads, companies, contacts] = await Promise.all([
+  const [leads, companies, contacts, general] = await Promise.all([
     db.lead.findMany({
       // Kanban stages only — sourced prospects live on /prospects (§1a)
       where: { deletedAt: null, stage: { in: [...LEAD_STAGES] } },
@@ -34,6 +35,7 @@ export default async function PipelinePage() {
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       select: { id: true, firstName: true, lastName: true },
     }),
+    readGeneralConfig(orgId),
   ]);
 
   // Decimal isn't serializable to client components — stringify it.
@@ -60,7 +62,7 @@ export default async function PipelinePage() {
           }))}
         />
       </div>
-      <PipelineBoard leads={boardLeads} />
+      <PipelineBoard leads={boardLeads} currency={general.currency} />
     </div>
   );
 }
