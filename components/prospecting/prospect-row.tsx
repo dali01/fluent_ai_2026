@@ -19,6 +19,7 @@ import {
   enrichProspectNow,
   qualifyProspect,
 } from "@/lib/actions/prospects";
+import { sourceMetaByEnum } from "@/lib/prospecting/sources/meta";
 import { cn } from "@/lib/utils";
 
 export type ProspectRowData = {
@@ -39,11 +40,19 @@ export type ProspectRowData = {
   discoveredAt: string | null;
 };
 
-const SOURCE_BADGE: Record<string, string> = {
-  FDA: "bg-chart-2/10 text-chart-2",
-  PLACES: "bg-chart-1/10 text-chart-1",
-  PERMIT: "bg-chart-3/10 text-chart-3",
-};
+/** Badge styling comes from the source registry — no parallel map to
+ * forget when an agent is added (DECISIONS.md). */
+function sourceBadgeClass(source: string): string {
+  return (
+    sourceMetaByEnum(source as never)?.badgeClass ??
+    "bg-muted text-muted-foreground"
+  );
+}
+
+/** Short chip label: "fda device" reads better than "FDA_DEVICE". */
+function sourceLabel(source: string): string {
+  return source.toLowerCase().replaceAll("_", " ");
+}
 
 function scoreTone(score: number | null): string {
   if (score == null) return "bg-muted text-muted-foreground";
@@ -84,9 +93,9 @@ export function ProspectRow({ prospect }: { prospect: ProspectRowData }) {
         </span>
         <Badge
           variant="outline"
-          className={cn("shrink-0", SOURCE_BADGE[prospect.source])}
+          className={cn("shrink-0", sourceBadgeClass(prospect.source))}
         >
-          {prospect.source.toLowerCase()}
+          {sourceLabel(prospect.source)}
         </Badge>
         {prospect.city ? (
           <span className="hidden text-xs text-muted-foreground sm:inline">

@@ -5,7 +5,12 @@
  * `now` is injected — never Date.now() inside. docs/prospecting.md §6.
  */
 
-export type ProspectSourceKind = "PLACES" | "PERMIT" | "FDA" | "MANUAL";
+// Derived from the Prisma enum (type-only import — erased at compile
+// time), so a new enum value forces a SOURCE_WEIGHTS row below rather
+// than silently falling back to MANUAL's weights.
+import type { ProspectSource } from "@/lib/generated/prisma/enums";
+
+export type ProspectSourceKind = ProspectSource;
 
 export type ScoreWeights = {
   recency: number;
@@ -19,8 +24,8 @@ export const SOURCE_WEIGHTS: Record<ProspectSourceKind, ScoreWeights> = {
   // New business / licence: short-fuse — they need signage and cards NOW
   PERMIT: {
     recency: 0.45,
-    categoryFit: 0.35,
-    proximity: 0.15,
+    categoryFit: 0.5,
+    proximity: 0,
     repeatSignal: 0.05,
     halfLifeDays: 30,
   },
@@ -32,18 +37,54 @@ export const SOURCE_WEIGHTS: Record<ProspectSourceKind, ScoreWeights> = {
     repeatSignal: 0.2,
     halfLifeDays: 45,
   },
-  // Places discovery: standing businesses, fit matters most
+  // Places discovery: standing businesses, fit matters most.
+  // proximity is 0 everywhere until geocoding exists — ingest never
+  // passes a value, so any nonzero weight here would be unreachable
+  // points that silently cap the score (DECISIONS.md).
   PLACES: {
     recency: 0.15,
-    categoryFit: 0.55,
-    proximity: 0.2,
+    categoryFit: 0.75,
+    proximity: 0,
     repeatSignal: 0.1,
     halfLifeDays: 120,
   },
+  // OpenStreetMap: like Places, but `newer:` gives a genuine
+  // recently-mapped signal, so recency earns a little more weight
+  OSM: {
+    recency: 0.25,
+    categoryFit: 0.6,
+    proximity: 0,
+    repeatSignal: 0.15,
+    halfLifeDays: 90,
+  },
+  // Device clearance: mirrors drug approvals — procurement runway
+  FDA_DEVICE: {
+    recency: 0.35,
+    categoryFit: 0.45,
+    proximity: 0,
+    repeatSignal: 0.2,
+    halfLifeDays: 45,
+  },
+  // IPO/proxy filings: hard deadlines, the window closes fast
+  EDGAR: {
+    recency: 0.45,
+    categoryFit: 0.4,
+    proximity: 0,
+    repeatSignal: 0.15,
+    halfLifeDays: 30,
+  },
+  // Trademark filing: a launch follows in months, not weeks
+  TRADEMARK: {
+    recency: 0.4,
+    categoryFit: 0.45,
+    proximity: 0,
+    repeatSignal: 0.15,
+    halfLifeDays: 60,
+  },
   MANUAL: {
     recency: 0.25,
-    categoryFit: 0.5,
-    proximity: 0.15,
+    categoryFit: 0.65,
+    proximity: 0,
     repeatSignal: 0.1,
     halfLifeDays: 90,
   },

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { sourceMetaByEnum } from "@/lib/prospecting/sources/meta";
 import { AI_MAX_TOKENS, AI_MODEL, getAiClient, isAiEnabled } from "./client";
 import { runAiTask } from "./task";
 
@@ -28,13 +29,9 @@ export type OutreachInput = {
   rationale?: string | null;
 };
 
-const SOURCE_ANGLE: Record<string, string> = {
-  FDA: "Their drug approval just cleared — they will need cartons, package inserts, blister foil and pharmacy labels with a compliance-grade print partner. Procurement runway is weeks, tone is B2B-professional.",
-  PERMIT:
-    "They JUST opened or licensed a new business — they need signage, business cards, menus and window graphics immediately. Tone is warm, local, congratulatory.",
-  PLACES:
-    "An established local business we have not worked with. Lead with one concrete idea for their category, not a generic pitch.",
-};
+/** Fallback for MANUAL leads, which have no discovery agent. */
+const GENERIC_ANGLE =
+  "A business we have not worked with. Lead with one concrete idea for their category, not a generic pitch.";
 
 export async function draftOutreach(
   input: OutreachInput,
@@ -60,7 +57,7 @@ export async function draftOutreach(
             content: `You draft first-touch sales outreach for ${input.shopName}, a commercial print shop. Draft a short email (under 140 words) to ${input.prospectName}${input.city ? ` in ${input.city}` : ""}.
 
 Trigger: ${input.triggerReason}
-Angle: ${SOURCE_ANGLE[input.source] ?? SOURCE_ANGLE.PLACES}
+Angle: ${sourceMetaByEnum(input.source as never)?.outreachAngle ?? GENERIC_ANGLE}
 ${input.category ? `Their category: ${input.category}` : ""}
 ${input.rationale ? `Why they scored well: ${input.rationale}` : ""}
 

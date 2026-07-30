@@ -9,7 +9,11 @@ import {
   ProspectingSettingsForm,
   type SourceAvailability,
 } from "@/components/settings/prospecting-form";
-import { getSource, SOURCE_IDS } from "@/lib/prospecting/sources";
+import {
+  getSource,
+  sourceConfigsFrom,
+  SOURCE_IDS,
+} from "@/lib/prospecting/sources";
 import {
   readGeneralConfig,
   readProspectingConfig,
@@ -46,14 +50,11 @@ export default async function SettingsPage() {
 
   // Availability is a server-side fact (env + config); the form only
   // renders it.
+  const prospectingConfigs = sourceConfigsFrom(prospecting);
   const sourceAvailability: SourceAvailability[] = SOURCE_IDS.map((id) => ({
     id,
     enabled: prospecting.sources[id],
-    unavailableReason: getSource(id, {
-      queries: prospecting.placesQueries,
-      center: prospecting.market?.center,
-      radiusMeters: prospecting.market?.radiusMeters,
-    }).unavailableReason(),
+    unavailableReason: getSource(id, prospectingConfigs).unavailableReason(),
   }));
 
   return (
