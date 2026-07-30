@@ -10,7 +10,9 @@
  * change input types), so we pass ORG_ID explicitly — the tenant layer
  * throws if it ever differs from the active org.
  */
-import "dotenv/config";
+import { config as loadEnv } from "dotenv";
+loadEnv({ path: [".env.local", ".env"] });
+
 import { getDb } from "../lib/db/client";
 import { tenantDb } from "../lib/db/tenant";
 
@@ -24,7 +26,11 @@ async function main() {
   // ── Organization + users (global models — raw client) ─────────
   await db.organization.upsert({
     where: { id: ORG_ID },
-    create: { id: ORG_ID, name: ORG_NAME, slug: "demo-print-co" },
+    create: {
+      id: ORG_ID,
+      name: ORG_NAME,
+      slug: ORG_ID === "org_demo_fluent" ? "demo-print-co" : null,
+    },
     update: { name: ORG_NAME },
   });
 

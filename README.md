@@ -38,12 +38,32 @@ are sent to `/select-org` to pick or create their print business.
 2. **Enable Organizations** (Configure → Organization Settings)
 3. Copy the publishable + secret keys into `.env.local`
 
-### Neon setup (needed from Phase 1)
+### Database
+
+**Local dev** (no Neon needed): run Postgres in Docker and point
+`DATABASE_URL`/`DIRECT_URL` at it — localhost URLs automatically use the
+node-postgres driver instead of the Neon serverless driver.
+
+```bash
+docker run -d --name fluent-pg -e POSTGRES_PASSWORD=fluent -e POSTGRES_DB=fluent -p 5432:5432 postgres:17
+```
+
+```
+DATABASE_URL=postgresql://postgres:fluent@localhost:5432/fluent
+DIRECT_URL=postgresql://postgres:fluent@localhost:5432/fluent
+```
+
+Then `pnpm db:migrate && pnpm db:seed` (use `SEED_ORG_ID=<your Clerk org id>`
+to seed your real organization instead of the demo org), and optionally
+`pnpm exec tsx scripts/smoke-crm.ts` to smoke-test queries + tenant
+isolation against live data.
+
+**Production (Neon)**:
 
 1. Create a project at https://neon.tech
 2. Copy the **pooled** connection string into `DATABASE_URL` and the
    **direct** connection string into `DIRECT_URL`
-3. `pnpm prisma migrate dev`
+3. `pnpm db:migrate && pnpm db:seed`
 
 ## Scripts
 

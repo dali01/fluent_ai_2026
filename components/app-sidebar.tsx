@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Boxes,
+  Building2,
   CalendarDays,
   Contact,
   FileText,
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/contacts", label: "Contacts", icon: Contact },
+  { href: "/companies", label: "Companies", icon: Building2 },
   { href: "/pipeline", label: "Pipeline", icon: KanbanSquare },
   { href: "/jobs", label: "Jobs", icon: Printer },
   { href: "/quotes", label: "Quotes", icon: FileText },
