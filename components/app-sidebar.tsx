@@ -11,6 +11,7 @@ import {
   KanbanSquare,
   LayoutDashboard,
   Printer,
+  Radar,
   Receipt,
   Settings,
   Truck,
@@ -31,6 +32,7 @@ const navGroups: Array<{
     items: [
       { href: "/contacts", label: "Contacts", icon: Contact },
       { href: "/companies", label: "Companies", icon: Building2 },
+      { href: "/prospects", label: "Prospects", icon: Radar },
       { href: "/pipeline", label: "Pipeline", icon: KanbanSquare },
       { href: "/quotes", label: "Quotes", icon: FileText },
     ],
