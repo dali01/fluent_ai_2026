@@ -74,53 +74,55 @@ export default async function ContactsPage({
           <p>No contacts yet. Create the first one.</p>
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Tags</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {contacts.map((contact) => (
-              <TableRow key={contact.id}>
-                <TableCell>
-                  <Link
-                    href={`/contacts/${contact.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {contact.firstName} {contact.lastName}
-                  </Link>
-                  {contact.title ? (
-                    <span className="ml-2 text-muted-foreground">
-                      {contact.title}
-                    </span>
-                  ) : null}
-                </TableCell>
-                <TableCell>
-                  {contact.company ? (
-                    <Link
-                      href={`/companies/${contact.company.id}`}
-                      className="hover:underline"
-                    >
-                      {contact.company.name}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </TableCell>
-                <TableCell>{contact.email ?? "—"}</TableCell>
-                <TableCell>{contact.phone ?? "—"}</TableCell>
-                <TableCell>
-                  <TagList tags={contact.tags} />
-                </TableCell>
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Company</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Tags</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {contacts.map((contact) => (
+                <TableRow key={contact.id}>
+                  <TableCell>
+                    <Link
+                      href={`/contacts/${contact.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {contact.firstName} {contact.lastName}
+                    </Link>
+                    {contact.title ? (
+                      <span className="ml-2 text-muted-foreground">
+                        {contact.title}
+                      </span>
+                    ) : null}
+                  </TableCell>
+                  <TableCell>
+                    {contact.company ? (
+                      <Link
+                        href={`/companies/${contact.company.id}`}
+                        className="hover:underline"
+                      >
+                        {contact.company.name}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell>{contact.email ?? "—"}</TableCell>
+                  <TableCell>{contact.phone ?? "—"}</TableCell>
+                  <TableCell>
+                    <TagList tags={contact.tags} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

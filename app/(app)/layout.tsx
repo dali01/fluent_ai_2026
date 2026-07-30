@@ -12,8 +12,8 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-svh flex-1">
       <AppSidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between gap-4 border-b px-4 py-3 md:px-6">
+      <div className="flex min-w-0 flex-1 flex-col bg-muted/30">
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b bg-background/80 px-4 py-3 backdrop-blur-md md:px-8">
           <OrganizationSwitcher
             hidePersonal
             afterSelectOrganizationUrl="/dashboard"
@@ -21,7 +21,9 @@ export default async function AppLayout({
           />
           <UserButton />
         </header>
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 p-4 md:p-8">
+          {children}
+        </main>
       </div>
     </div>
   );

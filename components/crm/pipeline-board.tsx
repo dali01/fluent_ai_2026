@@ -35,6 +35,15 @@ const STAGE_LABELS: Record<(typeof LEAD_STAGES)[number], string> = {
   REPEAT: "Repeat",
 };
 
+const STAGE_DOTS: Record<(typeof LEAD_STAGES)[number], string> = {
+  QUOTE_REQUESTED: "bg-chart-1",
+  QUOTED: "bg-chart-4",
+  APPROVED: "bg-chart-2",
+  IN_PRODUCTION: "bg-chart-3",
+  DELIVERED: "bg-chart-5",
+  REPEAT: "bg-primary",
+};
+
 function LeadCard({ lead }: { lead: PipelineLead }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: lead.id });
@@ -106,7 +115,13 @@ function StageColumn({
       )}
     >
       <div className="flex items-center justify-between px-1 pt-1">
-        <span className="text-sm font-medium">{STAGE_LABELS[stage]}</span>
+        <span className="flex items-center gap-2 text-sm font-medium">
+          <span
+            className={cn("size-2 rounded-full", STAGE_DOTS[stage])}
+            aria-hidden
+          />
+          {STAGE_LABELS[stage]}
+        </span>
         <span className="text-xs text-muted-foreground">
           {leads.length}
           {total > 0 ? ` · ${total.toLocaleString("sv-SE")} kr` : ""}
