@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { ArchiveButton } from "@/components/crm/archive-button";
 import { LogActivityForm } from "@/components/crm/log-activity-form";
+import { PortalLinkButton } from "@/components/crm/portal-link-button";
 import { TagList } from "@/components/crm/tag-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,6 +77,7 @@ export default async function ContactDetailPage({
           {contact.firstName} {contact.lastName}
         </h1>
         <div className="flex gap-2">
+          <PortalLinkButton contactId={contact.id} />
           <Button
             variant="outline"
             render={<Link href={`/contacts/${contact.id}/edit`} />}
