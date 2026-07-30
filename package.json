@@ -13,6 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
     "postinstall": "prisma generate",
     "prepare": "husky"
   },
@@ -50,6 +52,7 @@
     "prettier": "^3.9.6",
     "prisma": "^7.9.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.1",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }
