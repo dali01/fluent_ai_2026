@@ -40,8 +40,7 @@ export default async function InvoicesPage() {
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold tracking-tight">Invoices</h1>
       <p className="text-sm text-muted-foreground">
-        Payment tracking, deposits and profitability arrive in Phase 7 — this
-        list shows invoices created from accepted quotes.
+        Open an invoice to send it, record payments and track deposits.
       </p>
 
       {invoices.length === 0 ? (
@@ -66,8 +65,13 @@ export default async function InvoicesPage() {
             <TableBody>
               {invoices.map((invoice) => (
                 <TableRow key={invoice.id}>
-                  <TableCell className="font-mono font-medium">
-                    {invoice.invoiceNumber}
+                  <TableCell>
+                    <Link
+                      href={`/invoices/${invoice.id}`}
+                      className="font-mono font-medium hover:underline"
+                    >
+                      {invoice.invoiceNumber}
+                    </Link>
                   </TableCell>
                   <TableCell>
                     <Link
