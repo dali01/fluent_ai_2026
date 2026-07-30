@@ -3,6 +3,8 @@ import {
   PriceTierDialog,
   PricingRuleDialog,
 } from "@/components/settings/pricing-forms";
+import { ProspectingSettingsForm } from "@/components/settings/prospecting-form";
+import { readProspectingConfig } from "@/lib/db/org-settings";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -22,9 +24,10 @@ export default async function SettingsPage() {
   const { orgId } = await requireOrg();
   const db = tenantDb(orgId);
 
-  const [tiers, rules] = await Promise.all([
+  const [tiers, rules, prospecting] = await Promise.all([
     db.priceTier.findMany({ orderBy: { name: "asc" } }),
     db.pricingRule.findMany({ orderBy: [{ type: "asc" }, { name: "asc" }] }),
+    readProspectingConfig(orgId),
   ]);
 
   return (
@@ -74,6 +77,24 @@ export default async function SettingsPage() {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Prospecting</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProspectingSettingsForm
+            initial={{
+              enabled: prospecting.enabled,
+              city: prospecting.market?.city ?? "",
+              country: prospecting.market?.country ?? "SE",
+              placesQueries: prospecting.placesQueries,
+              minScore: prospecting.enrichment.minScore,
+              maxPerRun: prospecting.enrichment.maxPerRun,
+            }}
+          />
         </CardContent>
       </Card>
 
