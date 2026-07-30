@@ -1,0 +1,24 @@
+// Fluent AI — Prisma schema
+// Phase 0: skeleton only. The full multi-tenant data model lands in Phase 1.
+// Every tenant-scoped model MUST carry `organizationId` (enforced by the
+// tenant-scoped data-access layer in lib/db, built in Phase 1).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Mirrors a Clerk Organization. One row per print business (tenant).
+model Organization {
+  id        String   @id // Clerk organization ID (org_...)
+  name      String
+  slug      String?  @unique
+  plan      String   @default("standard")
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
