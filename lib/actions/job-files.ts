@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireOrg } from "@/lib/auth/require-org";
 import { tenantDb } from "@/lib/db/tenant";
+import { notifyProofRequest } from "@/lib/notifications/notify";
 import { runPrepressChecks } from "@/lib/prepress/checks";
 import { getStorage } from "@/lib/storage";
 import type { ActionResult } from "./form";
@@ -110,6 +111,14 @@ export async function sendProof(
     },
   });
   await db.job.update({ where: { id: jobId }, data: { status: "PROOFING" } });
+
+  const { clerkClient } = await import("@clerk/nextjs/server");
+  const organization = await (
+    await clerkClient()
+  ).organizations
+    .getOrganization({ organizationId: orgId })
+    .catch(() => null);
+  await notifyProofRequest(orgId, organization?.name ?? "Your print shop", job);
   await db.activityLog.create({
     data: {
       organizationId: orgId,

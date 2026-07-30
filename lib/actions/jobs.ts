@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireOrg } from "@/lib/auth/require-org";
 import { tenantDb } from "@/lib/db/tenant";
+import { notifyJobStatus } from "@/lib/notifications/notify";
 import { JOB_STATUSES, jobSchema } from "@/lib/validation/jobs";
 import { type ActionResult, actionOk, idOrNull, parseForm } from "./form";
 
@@ -115,6 +116,19 @@ export async function moveJobStatus(
   if (status === "DONE") {
     await consumeJobMaterials(orgId, jobId, job.jobNumber, userId);
   }
+
+  const { clerkClient } = await import("@clerk/nextjs/server");
+  const organization = await (
+    await clerkClient()
+  ).organizations
+    .getOrganization({ organizationId: orgId })
+    .catch(() => null);
+  await notifyJobStatus(
+    orgId,
+    organization?.name ?? "Your print shop",
+    job,
+    status,
+  );
 
   revalidatePath("/jobs");
   revalidatePath(`/jobs/${jobId}`);

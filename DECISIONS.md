@@ -164,6 +164,26 @@ Running log — newest last. Format: date, decision, why.
   notifications ride on the Phase 6 notification interface.
 - **Schedule UI is a week grid** (presses × days), not a full calendar —
   revisit if shops need finer visualization.
+
+## 2026-07-30 — Phase 6
+
+- **Portal auth = bearer tokens per contact** (magic links), not a second
+  Clerk surface. CSRs generate/rotate/revoke links from contact pages;
+  resolvePortalToken is the only raw-client lookup (token → org), after
+  which everything is tenantDb + explicit company fencing. Rate limiting
+  lands in Phase 9.
+- **E-signature record** on portal proof approval: typed full name + IP +
+  user agent + ISO timestamp + SHA-256 hash, stored in
+  Proof.signatureRecord and echoed to the activity log.
+- **Email provider chosen by RESEND_API_KEY** (Resend REST, no SDK);
+  console provider in dev. Notification sends never throw and are
+  activity-logged. `EMAIL_FROM` configurable; SMS remains a logged stub.
+- **Status/proof emails go to the company's oldest emailable contact** —
+  a proper notification-preferences model is future work.
+- **tsconfig excludes .next/dev** from standalone typecheck — the dev
+  server races pre-commit tsc with partially-written generated types.
+- **Known cosmetic**: Base UI logs a nativeButton warning for Buttons
+  rendering <Link>/<a> via render prop — harmless, tracked in TODO.
 - All colors flow through the shadcn/Tailwind v4 tokens in
   `app/globals.css` — no hardcoded hex in components (the logo/gradient
   use explicit oklch because SVG/inline-gradients can't read CSS vars in
