@@ -52,6 +52,7 @@ model Organization {
   activityLogs   ActivityLog[]
   aiTasks        AiTask[]
   leadScores     LeadScore[]
+  sourceRuns     SourceRun[]
 }
 
 /// One row per person. `id` is the Clerk user ID. Global (not tenant-scoped);
@@ -165,9 +166,36 @@ enum LeadStage {
   IN_PRODUCTION
   DELIVERED
   REPEAT
+  PROSPECT // cold, sourced, not yet qualified — never on the kanban
+  DISQUALIFIED // reviewed and rejected; retained for dedupe suppression
 }
 
-/// Lead / opportunity on the pipeline kanban.
+enum ProspectSource {
+  PLACES
+  PERMIT
+  FDA
+  MANUAL
+}
+
+enum EnrichmentStatus {
+  NOT_REQUIRED
+  PENDING
+  ENRICHED
+  FAILED
+  SKIPPED
+}
+
+enum SourceRunStatus {
+  RUNNING
+  SUCCEEDED
+  PARTIAL
+  FAILED
+  SKIPPED
+}
+
+/// Lead / opportunity on the pipeline kanban — and, since Phase 8, also
+/// sourced prospects (stage PROSPECT/DISQUALIFIED, never on the kanban).
+/// Prospect columns are null for human-created leads. See docs/prospecting.md.
 model Lead {
   id             String    @id @default(cuid())
   organizationId String
@@ -182,12 +210,67 @@ model Lead {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
+  // ── Prospecting (Phase 8) ──────────────────────────────────────
+  prospectSource     ProspectSource   @default(MANUAL)
+  triggerReason      String? // "New business licence 2026-07-14" | "FDA approval — Brand X (tablet)"
+  category           String?
+  externalId         String? // place_id | permit no | "NDA021436:ORIG1"
+  normalizedName     String? // dedupe key
+  locationKey        String? // name+street+postal; NULL for FDA (no address)
+  addressLine1       String?
+  city               String?
+  postalCode         String?
+  country            String?
+  website            String?
+  phone              String?
+  contactName        String? // ↓ enrichment output
+  contactEmail       String?
+  contactPhone       String?
+  contactTitle       String?
+  enrichmentStatus   EnrichmentStatus @default(NOT_REQUIRED)
+  enrichmentProvider String?
+  enrichedAt         DateTime?
+  score              Int? // 0–100, deterministic
+  scoreBreakdown     Json?
+  rationale          String?
+  signal             Json? // verbatim source payload
+  triggeredAt        DateTime? // when the event happened (approval/permit date)
+  discoveredAt       DateTime?
+
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   contact      Contact?     @relation(fields: [contactId], references: [id])
   company      Company?     @relation(fields: [companyId], references: [id])
 
+  @@unique([organizationId, prospectSource, externalId])
   @@index([organizationId])
   @@index([organizationId, stage])
+  @@index([organizationId, normalizedName])
+  @@index([organizationId, locationKey])
+  @@index([organizationId, stage, score])
+}
+
+/// One row per (org, source, run). Doubles as the delta watermark (cursor of
+/// the last SUCCEEDED run) and the unattended-failure record. Status mutates
+/// once, RUNNING → terminal, exactly like AiTask.status.
+model SourceRun {
+  id             String          @id @default(cuid())
+  organizationId String
+  source         ProspectSource
+  status         SourceRunStatus @default(RUNNING)
+  cursor         String? // opaque per-source watermark (openFDA: YYYYMMDD)
+  fetched        Int             @default(0)
+  created        Int             @default(0)
+  duplicates     Int             @default(0)
+  screenedOut    Int             @default(0)
+  enriched       Int             @default(0)
+  error          String?
+  warnings       Json?
+  startedAt      DateTime        @default(now())
+  finishedAt     DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, source, startedAt])
 }
 
 // ─────────────────────────────────────────────────────────────────
