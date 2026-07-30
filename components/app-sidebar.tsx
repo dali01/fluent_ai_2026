@@ -14,6 +14,7 @@ import {
   Receipt,
   Settings,
 } from "lucide-react";
+import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -34,9 +35,8 @@ export function AppSidebar() {
 
   return (
     <aside className="hidden w-56 shrink-0 border-r bg-sidebar md:flex md:flex-col">
-      <div className="flex items-center gap-2 px-4 py-4 font-semibold">
-        <Printer className="size-5" aria-hidden />
-        Fluent AI
+      <div className="px-4 py-4">
+        <Logo />
       </div>
       <nav className="flex flex-1 flex-col gap-1 px-2 pb-4">
         {navItems.map((item) => {
