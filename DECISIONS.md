@@ -147,6 +147,23 @@ Running log — newest last. Format: date, decision, why.
   double validation (JSON parse + Zod per type). A friendlier form editor
   is future work.
 - **Numbering series:** quotes #1001+, jobs #2001+, invoices #3001+.
+
+## 2026-07-30 — Phase 5
+
+- **Auto-deduct via planned JobMaterials:** stock is deducted when the
+  job hits DONE, idempotently (existing JOB_CONSUMPTION movements per
+  job+item are skipped). Stock MAY go negative on auto-deduct by design —
+  the run already happened; the ledger reflects reality and the low-stock
+  alert flags it. Manual adjustments, by contrast, refuse to go negative.
+- **quantityOnHand is movement-driven** — item edits can't change it;
+  only movements (opening stock counts as a PURCHASE movement).
+- **Double-booking prevention = serializable transaction** around the
+  overlap check + insert in createScheduleBlock. Conflicts report the
+  clashing slot; serialization failures ask the user to retry.
+- **Low-stock alerts are in-app** (banner + badges) for now; email/SMS
+  notifications ride on the Phase 6 notification interface.
+- **Schedule UI is a week grid** (presses × days), not a full calendar —
+  revisit if shops need finer visualization.
 - All colors flow through the shadcn/Tailwind v4 tokens in
   `app/globals.css` — no hardcoded hex in components (the logo/gradient
   use explicit oklch because SVG/inline-gradients can't read CSS vars in

@@ -346,6 +346,23 @@ async function main() {
       note: "Wayfinding boards run",
     },
   });
+  await t.jobMaterial.create({
+    data: {
+      ...org,
+      jobId: job.id,
+      inventoryItemId: silk170.id,
+      quantityPlanned: 1600,
+    },
+  });
+
+  await t.vendor.create({
+    data: {
+      ...org,
+      name: "FoilCraft AB",
+      email: "orders@foilcraft.example",
+      services: "foiling, embossing, die-cutting",
+    },
+  });
 
   // Invoice with 50% deposit paid
   const invoice = await t.invoice.create({
