@@ -175,6 +175,10 @@ enum ProspectSource {
   PERMIT
   FDA
   MANUAL
+  OSM // OpenStreetMap / Overpass — keyless local discovery
+  FDA_DEVICE // openFDA 510(k) device clearances
+  EDGAR // SEC filings (S-1, DEF 14A)
+  TRADEMARK // USPTO trademark applications
 }
 
 enum EnrichmentStatus {
