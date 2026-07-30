@@ -77,6 +77,13 @@ isolation against live data.
 | `pnpm test:e2e`  | Playwright E2E (needs `.env.local` + `pnpm exec playwright install chromium` once) |
 | `pnpm format`    | Prettier write                                                                     |
 
+Demo data: `SEED_ORG_ID=<org> SEED_MARKET=se|us pnpm exec tsx
+scripts/seed-demo.ts` seeds a market-specific dataset (Swedish/SEK or
+US/USD) with order histories shaped so `/insights` has something to
+show. `scripts/reset-org.ts <orgId>` clears one org's tenant data first.
+`scripts/grant-org-access.ts <email>` makes a user admin of every Clerk
+org.
+
 A Husky pre-commit hook runs `typecheck && lint && test`.
 
 ## Deploy (Vercel)

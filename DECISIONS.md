@@ -274,3 +274,33 @@ Running log — newest last. Format: date, decision, why.
 - Per-message chat persistence rejected for now: turns live in the
   browser; AiTask logs each call with cost. Rate limiting rides the
   existing "portal rate limiting" TODO (Phase 9).
+
+## 2026-07-30 — Per-org settings, auth redirect, demo data
+
+- **Currency is a per-org display setting**, not a data column:
+  `Organization.settings.general.currency` (zod, SEK default) rendered
+  through the single `formatMoney()` helper. Switching it relabels
+  existing amounts — it does NOT convert them. Real multi-currency needs
+  per-record currency on Quote/Invoice (TODO-FUTURE).
+- **Currency constants live in `lib/format/money.ts`, never `lib/db`** —
+  client components importing them from `lib/db/org-settings` pulled the
+  Prisma pg adapter into the browser bundle (`Module not found: 'dns'`).
+  Rule: anything a `"use client"` file imports must not transitively
+  reach `lib/db`.
+- **Sign-in redirect is explicit in code**, not env-dependent: prod has
+  no `NEXT_PUBLIC_CLERK_*_REDIRECT_URL` vars, so Clerk's default dropped
+  authenticated users back on the marketing page ("login does nothing").
+  `fallbackRedirectUrl="/dashboard"` on SignIn/SignUp plus a server-side
+  bounce off `/` for signed-in users.
+- **Demo data is market-parameterized** (`SEED_MARKET=se|us`): Swedish
+  dataset (Jönköping, SEK, 25% VAT) vs US (Austin, USD, 8.25% sales
+  tax), each with its own companies, contacts, job titles, vendors,
+  prospect and prospecting config. Identical seeds across orgs read as a
+  tenant leak during demos even when isolation is correct — distinct
+  data per org is a demo requirement, not a cosmetic one.
+- **`scripts/reset-org.ts`** deletes an org's tenant rows in FK order
+  (org row + memberships kept) so a demo org can be re-seeded for a
+  different market.
+- **Reorder likelihood tapers past 2.5× cadence** (0 by 5×): a customer
+  silent for a year is churned, not "due". Without the taper, dead
+  accounts topped the reorder list.
