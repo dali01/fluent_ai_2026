@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Copy, Download, Pencil } from "lucide-react";
 import { ArchiveButton } from "@/components/crm/archive-button";
+import { ExplainPrepressButton } from "@/components/jobs/explain-prepress-button";
 import { JobMaterialsCard } from "@/components/jobs/job-materials-card";
 import { JobStatusBadge } from "@/components/jobs/job-status-badge";
 import { PrepressReport } from "@/components/jobs/prepress-report";
@@ -322,9 +323,12 @@ export default async function JobDetailPage({
                   </div>
                 </div>
                 {file.prepressResult ? (
-                  <PrepressReport
-                    result={file.prepressResult as unknown as PrepressResult}
-                  />
+                  <>
+                    <PrepressReport
+                      result={file.prepressResult as unknown as PrepressResult}
+                    />
+                    <ExplainPrepressButton jobFileId={file.id} />
+                  </>
                 ) : null}
               </div>
             ))

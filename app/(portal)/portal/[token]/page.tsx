@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
+import { PortalChat } from "@/components/portal/portal-chat";
 import { PortalUploadForm } from "@/components/portal/portal-upload-form";
+import { isAiEnabled } from "@/lib/ai/client";
 import { ProofSignForm } from "@/components/portal/proof-sign-form";
 import { ReorderButton } from "@/components/portal/reorder-button";
 import { Badge } from "@/components/ui/badge";
@@ -200,6 +202,8 @@ export default async function PortalHomePage({
           )}
         </CardContent>
       </Card>
+
+      {isAiEnabled() ? <PortalChat token={token} /> : null}
 
       <Card>
         <CardHeader>

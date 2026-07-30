@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Boxes,
   Building2,
+  Lightbulb,
   CalendarDays,
   Contact,
   FileText,
@@ -35,6 +36,7 @@ const navGroups: Array<{
       { href: "/prospects", label: "Prospects", icon: Radar },
       { href: "/pipeline", label: "Pipeline", icon: KanbanSquare },
       { href: "/quotes", label: "Quotes", icon: FileText },
+      { href: "/insights", label: "Insights", icon: Lightbulb },
     ],
   },
   {

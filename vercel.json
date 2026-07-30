@@ -2,6 +2,7 @@
   "crons": [
     { "path": "/api/cron/prospecting/fda", "schedule": "0 4 * * *" },
     { "path": "/api/cron/prospecting/permit", "schedule": "30 4 * * *" },
-    { "path": "/api/cron/prospecting/places", "schedule": "0 3 * * 1" }
+    { "path": "/api/cron/prospecting/places", "schedule": "0 3 * * 1" },
+    { "path": "/api/cron/insights", "schedule": "0 5 * * *" }
   ]
 }

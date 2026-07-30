@@ -243,3 +243,34 @@ Running log — newest last. Format: date, decision, why.
   `app/globals.css` — no hardcoded hex in components (the logo/gradient
   use explicit oklch because SVG/inline-gradients can't read CSS vars in
   all contexts).
+
+## 2026-07-30 — Phase 8b (AI insights, prepress explanations, portal chat)
+
+- **Insight scores are deterministic; Claude explains, never decides**
+  (same posture as prospecting): `lib/insights` computes reorder
+  likelihood (ramp vs the customer's own median cadence) and churn risk
+  (max of dormancy-vs-own-rhythm and 180-day volume decline) as pure
+  functions with an injected clock, capped at 0.95 — never certainty.
+  Claude's only role is the on-demand rep brief on `/insights`.
+- **`LeadScore.enrichment` holds the factor breakdown** ({reorder,
+  churn} JSON) — reusing the existing column rather than migrating; the
+  deterministic one-liner lives in `rationale`. One upsert per company
+  per run, keyed on the existing `[organizationId, companyId]` unique.
+- **An order event = Job.createdAt** (the moment the customer bought),
+  not DONE — status churn shouldn't move cadence math.
+- **Insights cron at 05:00 UTC** with the Phase 8 posture (404 bad
+  secret, 200 `{ok:false}` on failure); the `/insights` Recompute
+  button calls the same function.
+- **Prepress explanations are ephemeral**: shown + copy-to-clipboard,
+  logged on AiTask, but not persisted to the JobFile — the deterministic
+  checks remain the record; explanations regenerate on demand.
+- **Portal chatbot is read-only by construction**: the API route
+  assembles a company-scoped snapshot (open quotes+lines, jobs, open
+  invoices) from the portal token's context and Claude answers ONLY
+  from it — no negotiation, no actions, prices quoted as-is, injection
+  attempts declined by system prompt. 404 on bad token (matching the
+  files route), zod caps history at 20×2000 chars. Chat is plain-text
+  (`messages.create`), not structured output — it's conversation.
+- Per-message chat persistence rejected for now: turns live in the
+  browser; AiTask logs each call with cost. Rate limiting rides the
+  existing "portal rate limiting" TODO (Phase 9).

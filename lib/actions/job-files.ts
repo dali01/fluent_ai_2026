@@ -1,10 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isAiEnabled } from "@/lib/ai/client";
+import {
+  explainPrepress,
+  type PrepressExplanation,
+} from "@/lib/ai/prepress";
 import { requireOrg } from "@/lib/auth/require-org";
 import { tenantDb } from "@/lib/db/tenant";
 import { notifyProofRequest } from "@/lib/notifications/notify";
-import { runPrepressChecks } from "@/lib/prepress/checks";
+import { runPrepressChecks, type PrepressResult } from "@/lib/prepress/checks";
 import { getStorage } from "@/lib/storage";
 import type { ActionResult } from "./form";
 import { actionOk } from "./form";
@@ -132,6 +137,44 @@ export async function sendProof(
 
   revalidatePath(`/jobs/${jobId}`);
   return actionOk;
+}
+
+/** Plain-English translation of a file's deterministic prepress results. */
+export async function explainJobFilePrepress(
+  jobFileId: string,
+): Promise<
+  | { ok: true; explanation: PrepressExplanation }
+  | { ok: false; error: string }
+> {
+  const { orgId } = await requireOrg();
+  if (!isAiEnabled()) {
+    return { ok: false, error: "AI is not configured (ANTHROPIC_API_KEY)" };
+  }
+  const db = tenantDb(orgId);
+
+  const file = await db.jobFile.findUniqueOrThrow({
+    where: { id: jobFileId },
+    include: { job: { select: { title: true } } },
+  });
+  if (!file.prepressResult) {
+    return { ok: false, error: "No prepress results on this file" };
+  }
+
+  try {
+    const explanation = await explainPrepress({
+      orgId,
+      fileName: file.fileName,
+      jobTitle: file.job.title,
+      result: file.prepressResult as unknown as PrepressResult,
+    });
+    if (!explanation) return { ok: false, error: "AI unavailable" };
+    return { ok: true, explanation };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Explanation failed",
+    };
+  }
 }
 
 /**
