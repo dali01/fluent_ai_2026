@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { saveQuote } from "@/lib/actions/quotes";
+import { type Currency, formatMoney } from "@/lib/format/money";
 import { computeQuote, type EngineRule } from "@/lib/pricing/engine";
 
 export type BuilderCompany = {
@@ -45,18 +46,17 @@ const emptyRow = (key: number): LineRow => ({
   finish: "",
 });
 
-const kr = (n: number) =>
-  `${n.toLocaleString("sv-SE", { maximumFractionDigits: 2 })} kr`;
-
 export function QuoteBuilder({
   quoteId,
   companies,
   rules,
+  currency = "SEK",
   initial,
 }: {
   quoteId?: string;
   companies: BuilderCompany[];
   rules: EngineRule[];
+  currency?: Currency;
   initial?: {
     companyId: string;
     rush: boolean;
@@ -71,6 +71,7 @@ export function QuoteBuilder({
     }>;
   };
 }) {
+  const kr = (n: number) => formatMoney(n, currency);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [companyId, setCompanyId] = useState(initial?.companyId ?? "");

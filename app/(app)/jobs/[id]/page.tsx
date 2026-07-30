@@ -17,7 +17,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { archiveJob, reorderJob } from "@/lib/actions/jobs";
 import { computeProfitability } from "@/lib/financials/profitability";
 import { requireOrg } from "@/lib/auth/require-org";
+import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
+import { formatMoney } from "@/lib/format/money";
 import type { PrepressResult } from "@/lib/prepress/checks";
 
 export const metadata = { title: "Job" };
@@ -102,8 +104,8 @@ export default async function JobDetailPage({
         : null,
     })),
   });
-  const kr = (n: number) =>
-    `${n.toLocaleString("sv-SE", { maximumFractionDigits: 2 })} kr`;
+  const { currency } = await readGeneralConfig(orgId);
+  const kr = (n: number) => formatMoney(n, currency);
 
   const defaultContactId = job.company.contacts[0]?.id ?? null;
 

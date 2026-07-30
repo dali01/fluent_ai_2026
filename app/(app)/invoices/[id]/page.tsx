@@ -5,13 +5,12 @@ import { PaymentDialog } from "@/components/invoices/payment-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOrg } from "@/lib/auth/require-org";
+import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
+import { formatMoney } from "@/lib/format/money";
 import { INVOICE_TRANSITIONS } from "@/lib/validation/invoices";
 
 export const metadata = { title: "Invoice" };
-
-const kr = (n: unknown) =>
-  `${Number(n).toLocaleString("sv-SE", { maximumFractionDigits: 2 })} kr`;
 
 const STATUS_VARIANT: Record<string, "secondary" | "destructive" | "outline"> =
   {
@@ -30,6 +29,8 @@ export default async function InvoiceDetailPage({
 }) {
   const { orgId } = await requireOrg();
   const { id } = await params;
+  const { currency } = await readGeneralConfig(orgId);
+  const kr = (n: unknown) => formatMoney(Number(n), currency);
 
   const invoice = await tenantDb(orgId).invoice.findUnique({
     where: { id },

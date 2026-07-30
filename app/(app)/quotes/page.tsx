@@ -11,12 +11,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireOrg } from "@/lib/auth/require-org";
+import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
+import { formatMoney } from "@/lib/format/money";
 
 export const metadata = { title: "Quotes" };
 
 export default async function QuotesPage() {
   const { orgId } = await requireOrg();
+  const { currency } = await readGeneralConfig(orgId);
 
   const quotes = await tenantDb(orgId).quote.findMany({
     where: { deletedAt: null },
@@ -83,7 +86,7 @@ export default async function QuotesPage() {
                       : "—"}
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {Number(quote.total).toLocaleString("sv-SE")} kr
+                    {formatMoney(quote.total, currency)}
                   </TableCell>
                 </TableRow>
               ))}

@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { getAccountingProvider } from "@/lib/accounting";
 import { requireOrg } from "@/lib/auth/require-org";
+import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
+import { formatMoney } from "@/lib/format/money";
 import { INVOICE_TRANSITIONS, paymentSchema } from "@/lib/validation/invoices";
 import { type ActionResult, actionOk, parseForm } from "./form";
 
@@ -87,12 +89,13 @@ export async function recordPayment(
     };
   }
 
+  const { currency } = await readGeneralConfig(orgId);
   const paidSoFar = invoice.payments.reduce((s, p) => s + Number(p.amount), 0);
   const remaining = Number(invoice.total) - paidSoFar;
   if (data.amount > remaining + 0.01) {
     return {
       ok: false,
-      error: `Amount exceeds the ${remaining.toLocaleString("sv-SE")} kr remaining`,
+      error: `Amount exceeds the ${formatMoney(remaining, currency)} remaining`,
     };
   }
 
@@ -129,7 +132,7 @@ export async function recordPayment(
     data: {
       organizationId: orgId,
       type: "PAYMENT_RECEIVED",
-      summary: `${data.amount.toLocaleString("sv-SE")} kr ${data.isDeposit ? "deposit " : ""}received on invoice #${invoice.invoiceNumber} — now ${newStatus.toLowerCase().replaceAll("_", " ")}`,
+      summary: `${formatMoney(data.amount, currency)} ${data.isDeposit ? "deposit " : ""}received on invoice #${invoice.invoiceNumber} — now ${newStatus.toLowerCase().replaceAll("_", " ")}`,
       jobId: invoice.jobId,
       actorId: userId,
     },

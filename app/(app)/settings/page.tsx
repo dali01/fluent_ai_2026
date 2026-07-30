@@ -1,10 +1,15 @@
+import { clerkClient } from "@clerk/nextjs/server";
 import {
   DeleteRuleButton,
   PriceTierDialog,
   PricingRuleDialog,
 } from "@/components/settings/pricing-forms";
+import { GeneralSettingsForm } from "@/components/settings/general-form";
 import { ProspectingSettingsForm } from "@/components/settings/prospecting-form";
-import { readProspectingConfig } from "@/lib/db/org-settings";
+import {
+  readGeneralConfig,
+  readProspectingConfig,
+} from "@/lib/db/org-settings";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -24,15 +29,37 @@ export default async function SettingsPage() {
   const { orgId } = await requireOrg();
   const db = tenantDb(orgId);
 
-  const [tiers, rules, prospecting] = await Promise.all([
-    db.priceTier.findMany({ orderBy: { name: "asc" } }),
-    db.pricingRule.findMany({ orderBy: [{ type: "asc" }, { name: "asc" }] }),
-    readProspectingConfig(orgId),
-  ]);
+  const [tiers, rules, prospecting, general, organization] = await Promise.all(
+    [
+      db.priceTier.findMany({ orderBy: { name: "asc" } }),
+      db.pricingRule.findMany({ orderBy: [{ type: "asc" }, { name: "asc" }] }),
+      readProspectingConfig(orgId),
+      readGeneralConfig(orgId),
+      (async () =>
+        (await clerkClient()).organizations
+          .getOrganization({ organizationId: orgId })
+          .catch(() => null))(),
+    ],
+  );
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <p className="text-sm text-muted-foreground">
+          {organization?.name ?? orgId} — every setting here is specific to
+          this organization.
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>General</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <GeneralSettingsForm initial={general.currency} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

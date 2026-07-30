@@ -14,6 +14,7 @@ import { GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { moveLeadStage } from "@/lib/actions/leads";
+import { type Currency, formatMoney } from "@/lib/format/money";
 import { LEAD_STAGES } from "@/lib/validation/crm";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +45,13 @@ const STAGE_DOTS: Record<(typeof LEAD_STAGES)[number], string> = {
   REPEAT: "bg-primary",
 };
 
-function LeadCard({ lead }: { lead: PipelineLead }) {
+function LeadCard({
+  lead,
+  currency,
+}: {
+  lead: PipelineLead;
+  currency: Currency;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: lead.id });
 
@@ -85,7 +92,7 @@ function LeadCard({ lead }: { lead: PipelineLead }) {
         )}
         {lead.value ? (
           <Badge variant="secondary">
-            {Number(lead.value).toLocaleString("sv-SE")} kr
+            {formatMoney(lead.value, currency)}
           </Badge>
         ) : null}
       </div>
@@ -96,9 +103,11 @@ function LeadCard({ lead }: { lead: PipelineLead }) {
 function StageColumn({
   stage,
   leads,
+  currency,
 }: {
   stage: (typeof LEAD_STAGES)[number];
   leads: PipelineLead[];
+  currency: Currency;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
   const total = leads.reduce(
@@ -124,19 +133,25 @@ function StageColumn({
         </span>
         <span className="text-xs text-muted-foreground">
           {leads.length}
-          {total > 0 ? ` · ${total.toLocaleString("sv-SE")} kr` : ""}
+          {total > 0 ? ` · ${formatMoney(total, currency)}` : ""}
         </span>
       </div>
       <div className="flex min-h-24 flex-col gap-2">
         {leads.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} />
+          <LeadCard key={lead.id} lead={lead} currency={currency} />
         ))}
       </div>
     </div>
   );
 }
 
-export function PipelineBoard({ leads }: { leads: PipelineLead[] }) {
+export function PipelineBoard({
+  leads,
+  currency,
+}: {
+  leads: PipelineLead[];
+  currency: Currency;
+}) {
   const [, startTransition] = useTransition();
   const [optimisticLeads, applyMove] = useOptimistic(
     leads,
@@ -169,6 +184,7 @@ export function PipelineBoard({ leads }: { leads: PipelineLead[] }) {
             key={stage}
             stage={stage}
             leads={optimisticLeads.filter((l) => l.stage === stage)}
+            currency={currency}
           />
         ))}
       </div>
