@@ -85,3 +85,20 @@ Running log — newest last. Format: date, decision, why.
   filter it out). Restore UI is future work.
 - **scripts/smoke-crm.ts** replays every page query + live cross-tenant
   probes against the seeded DB — run it after schema changes.
+
+## 2026-07-30 — Phase 2.5 (graphical profile)
+
+- **Concept: "ink on paper."** Primary = deep indigo ink
+  `oklch(0.42 0.15 268)`; surfaces are warm paper whites; dark mode is a
+  blue-black pressroom tone. CMYK colors appear ONLY in the logo, chart
+  series (`--chart-1..3` = cyan/magenta/yellow, 4 = ink, 5 = teal) and
+  small landing accents — never as UI chrome.
+- **Logo** (`components/brand/logo.tsx`): three overlapping CMYK dots with
+  an ink center — a print registration mark. Favicon = `app/icon.svg`
+  (same mark on ink background); default Next favicon removed.
+- **Typography stays Geist** (sans + mono) — modern, neutral, already
+  wired via next/font.
+- All colors flow through the shadcn/Tailwind v4 tokens in
+  `app/globals.css` — no hardcoded hex in components (the logo/gradient
+  use explicit oklch because SVG/inline-gradients can't read CSS vars in
+  all contexts).

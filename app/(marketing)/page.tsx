@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Printer, Sparkles, Workflow } from "lucide-react";
+import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,18 +12,21 @@ import {
 const features = [
   {
     icon: Workflow,
+    accent: "text-chart-1",
     title: "Run the whole shop",
     description:
       "Contacts, quotes, jobs, proofs, presses and invoices — one pipeline from first enquiry to delivered reorder.",
   },
   {
     icon: Printer,
+    accent: "text-chart-2",
     title: "Built for print",
     description:
       "Stock, colour modes, bleed, finishing, press scheduling. Not a generic CRM with print bolted on.",
   },
   {
     icon: Sparkles,
+    accent: "text-chart-4",
     title: "AI where it counts",
     description:
       "Prepress file checks in plain English, reorder-likelihood scoring, drafted outreach — reviewed by you, never auto-sent.",
@@ -33,10 +37,7 @@ export default function LandingPage() {
   return (
     <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between px-6 py-4 md:px-12">
-        <div className="flex items-center gap-2 font-semibold">
-          <Printer className="size-5" aria-hidden />
-          Fluent AI
-        </div>
+        <Logo />
         <nav className="flex items-center gap-2">
           <Button variant="ghost" render={<Link href="/sign-in" />}>
             Sign in
@@ -45,8 +46,22 @@ export default function LandingPage() {
         </nav>
       </header>
 
-      <main className="flex flex-1 flex-col items-center justify-center gap-12 px-6 py-24 text-center">
+      <main className="relative flex flex-1 flex-col items-center justify-center gap-12 overflow-hidden px-6 py-24 text-center">
+        {/* CMYK registration glow behind the hero */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-105 max-w-3xl opacity-20 blur-3xl"
+          style={{
+            background:
+              "radial-gradient(closest-side at 35% 40%, oklch(0.7 0.13 220), transparent 70%)," +
+              "radial-gradient(closest-side at 65% 40%, oklch(0.62 0.21 350), transparent 70%)," +
+              "radial-gradient(closest-side at 50% 70%, oklch(0.83 0.14 90), transparent 70%)",
+          }}
+        />
         <div className="flex max-w-2xl flex-col items-center gap-6">
+          <span className="rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">
+            The CRM print shops actually want
+          </span>
           <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
             The modern CRM for print businesses
           </h1>
@@ -66,7 +81,7 @@ export default function LandingPage() {
             <Card key={feature.title}>
               <CardHeader>
                 <feature.icon
-                  className="mb-2 size-5 text-muted-foreground"
+                  className={`mb-2 size-5 ${feature.accent}`}
                   aria-hidden
                 />
                 <CardTitle>{feature.title}</CardTitle>
@@ -77,8 +92,9 @@ export default function LandingPage() {
         </div>
       </main>
 
-      <footer className="px-6 py-6 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Fluent AI
+      <footer className="flex items-center justify-between px-6 py-6 text-sm text-muted-foreground md:px-12">
+        <Logo className="text-sm" markClassName="size-4" />
+        <span>© {new Date().getFullYear()} Fluent AI</span>
       </footer>
     </div>
   );
