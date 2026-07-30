@@ -1,0 +1,169 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { requireOrg } from "@/lib/auth/require-org";
+import { tenantDb } from "@/lib/db/tenant";
+import { JOB_STATUSES, jobSchema } from "@/lib/validation/jobs";
+import { type ActionResult, actionOk, idOrNull, parseForm } from "./form";
+
+const FORM_OPTIONS = { booleans: ["rush"] };
+
+/** Next job number for the org — max+1 inside a transaction. Gap-tolerant. */
+async function nextJobNumber(orgId: string): Promise<number> {
+  const agg = await tenantDb(orgId).job.aggregate({
+    _max: { jobNumber: true },
+  });
+  return (agg._max.jobNumber ?? 2000) + 1;
+}
+
+function jobDataFromInput(data: ReturnType<typeof jobSchema.parse>) {
+  return {
+    title: data.title,
+    companyId: data.companyId,
+    status: data.status,
+    pressId: idOrNull(data.pressId),
+    stock: data.stock || null,
+    sizeName: data.sizeName || null,
+    widthMm: data.widthMm ?? null,
+    heightMm: data.heightMm ?? null,
+    colorMode: data.colorMode,
+    finish: data.finish || null,
+    binding: data.binding || null,
+    quantity: data.quantity,
+    bleedMm: data.bleedMm ?? null,
+    rush: data.rush,
+    dueDate: data.dueDate ? new Date(data.dueDate) : null,
+    notes: data.notes || null,
+  };
+}
+
+export async function createJob(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const { orgId, userId } = await requireOrg();
+  const { data, result } = parseForm(jobSchema, formData, FORM_OPTIONS);
+  if (!data) return result!;
+
+  const db = tenantDb(orgId);
+  const job = await db.job.create({
+    data: {
+      organizationId: orgId,
+      jobNumber: await nextJobNumber(orgId),
+      ...jobDataFromInput(data),
+    },
+  });
+  await db.activityLog.create({
+    data: {
+      organizationId: orgId,
+      type: "SYSTEM",
+      summary: `Job #${job.jobNumber} "${job.title}" created`,
+      jobId: job.id,
+      actorId: userId,
+    },
+  });
+
+  revalidatePath("/jobs");
+  redirect(`/jobs/${job.id}`);
+}
+
+export async function updateJob(
+  jobId: string,
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const { orgId } = await requireOrg();
+  const { data, result } = parseForm(jobSchema, formData, FORM_OPTIONS);
+  if (!data) return result!;
+
+  await tenantDb(orgId).job.update({
+    where: { id: jobId },
+    data: jobDataFromInput(data),
+  });
+
+  revalidatePath("/jobs");
+  revalidatePath(`/jobs/${jobId}`);
+  return actionOk;
+}
+
+/** Production board drag-and-drop. */
+export async function moveJobStatus(
+  jobId: string,
+  status: string,
+): Promise<ActionResult> {
+  const { orgId, userId } = await requireOrg();
+  if (!(JOB_STATUSES as readonly string[]).includes(status)) {
+    return { ok: false, error: `Unknown status: ${status}` };
+  }
+
+  const db = tenantDb(orgId);
+  const job = await db.job.update({
+    where: { id: jobId },
+    data: { status: status as (typeof JOB_STATUSES)[number] },
+  });
+  await db.activityLog.create({
+    data: {
+      organizationId: orgId,
+      type: "STATUS_CHANGE",
+      summary: `Job #${job.jobNumber} moved to ${status}`,
+      jobId,
+      actorId: userId,
+    },
+  });
+
+  revalidatePath("/jobs");
+  revalidatePath(`/jobs/${jobId}`);
+  return actionOk;
+}
+
+/** One-click reorder: clone specs into a fresh job in DESIGN. */
+export async function reorderJob(jobId: string): Promise<void> {
+  const { orgId, userId } = await requireOrg();
+  const db = tenantDb(orgId);
+
+  const source = await db.job.findUniqueOrThrow({ where: { id: jobId } });
+  const jobNumber = await nextJobNumber(orgId);
+  const clone = await db.job.create({
+    data: {
+      organizationId: orgId,
+      jobNumber,
+      title: source.title,
+      companyId: source.companyId,
+      status: "DESIGN",
+      pressId: source.pressId,
+      stock: source.stock,
+      sizeName: source.sizeName,
+      widthMm: source.widthMm,
+      heightMm: source.heightMm,
+      colorMode: source.colorMode,
+      finish: source.finish,
+      binding: source.binding,
+      quantity: source.quantity,
+      bleedMm: source.bleedMm,
+      notes: source.notes,
+    },
+  });
+  await db.activityLog.create({
+    data: {
+      organizationId: orgId,
+      type: "SYSTEM",
+      summary: `Job #${clone.jobNumber} created as reorder of #${source.jobNumber}`,
+      jobId: clone.id,
+      actorId: userId,
+    },
+  });
+
+  revalidatePath("/jobs");
+  redirect(`/jobs/${clone.id}`);
+}
+
+export async function archiveJob(jobId: string): Promise<void> {
+  const { orgId } = await requireOrg();
+  await tenantDb(orgId).job.update({
+    where: { id: jobId },
+    data: { deletedAt: new Date() },
+  });
+  revalidatePath("/jobs");
+  redirect("/jobs");
+}

@@ -47,3 +47,6 @@ next-env.d.ts
 # test artifacts
 /playwright-report/
 /test-results/
+
+# local dev uploads
+/.uploads/
