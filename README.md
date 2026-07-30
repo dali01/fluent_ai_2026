@@ -184,10 +184,27 @@ Open http://localhost:3000 — public landing page. Sign in to reach the
 org-scoped dashboard at `/dashboard`. Users without an active organization
 are sent to `/select-org` to pick or create their print business.
 
-The app runs without any AI keys: `ANTHROPIC_API_KEY` gates the AI
-features (buttons report unavailability, the portal chat card hides), and
-prospecting connectors report `SKIPPED` until configured. openFDA needs
-no key at all.
+### What each key unlocks
+
+`ANTHROPIC_API_KEY` is **required for every AI feature** — outreach
+drafting, insight explanations, prepress translations and the portal
+chatbot all call Claude server-side. Without it the app still builds and
+runs, and the whole CRM works; the AI actions just report "AI is not
+configured" and the portal chat card doesn't render.
+
+The deterministic half needs no AI key at all: prospecting still
+discovers, screens, dedupes and scores leads, and `/insights` still
+computes reorder and churn. Only the _explaining_ stops — which is the
+deterministic-first rule showing up as an operational property.
+
+| Key                     | Without it                                            |
+| ----------------------- | ----------------------------------------------------- |
+| `ANTHROPIC_API_KEY`     | All AI features off; everything else works            |
+| `CRON_SECRET`           | Scheduled jobs fail closed (404) — set it in Vercel   |
+| `GOOGLE_PLACES_API_KEY` | Places source reports `SKIPPED`; openFDA needs no key |
+| `APOLLO_API_KEY`        | Enrichment falls back to a deterministic stub         |
+| `RESEND_API_KEY`        | Emails are console-logged instead of sent             |
+| `BLOB_READ_WRITE_TOKEN` | Uploads go to a local `.uploads` directory            |
 
 ### Clerk setup
 
