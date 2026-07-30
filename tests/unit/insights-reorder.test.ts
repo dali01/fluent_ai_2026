@@ -46,9 +46,17 @@ describe("scoreReorder", () => {
     expect(insight.rationale).toContain("past their usual cadence");
   });
 
-  it("caps likelihood below certainty however overdue", () => {
-    const insight = scoreReorder(orders("2024-01-01", "2024-02-01"), NOW)!;
+  it("caps likelihood below certainty when clearly overdue", () => {
+    // ~31-day cadence, last order 60 days ago → ratio ~1.9, still "due"
+    const insight = scoreReorder(orders("2026-04-30", "2026-05-31"), NOW)!;
     expect(insight.likelihood).toBe(0.95);
+  });
+
+  it("tapers a lapsed customer back to zero — churn owns them", () => {
+    // Monthly cadence, silent ~7 months → lapsed, not "due"
+    const insight = scoreReorder(orders("2025-12-01", "2026-01-01"), NOW)!;
+    expect(insight.dueRatio).toBeGreaterThan(5);
+    expect(insight.likelihood).toBe(0);
   });
 
   it("uses the median so one long gap does not skew the cadence", () => {

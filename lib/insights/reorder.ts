@@ -6,7 +6,9 @@
  * time since their last order approaches and passes their typical
  * interval. Likelihood ramps linearly from 0 at half the typical
  * interval to ~0.9 at 1.5× it, saturating at 0.95 — never 1, the
- * future is not a database column.
+ * future is not a database column. Past 2.5× the cadence the customer
+ * has LAPSED, not "due": likelihood tapers back to 0 by 5× and the
+ * churn signal (lib/insights/churn.ts) owns them instead.
  */
 
 export type OrderEvent = {
@@ -67,11 +69,11 @@ export function scoreReorder(
     (now.getTime() - dated[dated.length - 1].at.getTime()) / MS_PER_DAY;
   const dueRatio = daysSinceLast / medianIntervalDays;
 
-  // 0 at ratio 0.5, 0.9 at ratio 1.5, capped
-  const likelihood = Math.min(
-    MAX_LIKELIHOOD,
-    Math.max(0, (dueRatio - 0.5) * 0.9),
-  );
+  // 0 at ratio 0.5, 0.9 at ratio 1.5, capped; tapers to 0 from 2.5× to 5×
+  const ramp = Math.min(MAX_LIKELIHOOD, Math.max(0, (dueRatio - 0.5) * 0.9));
+  const lapse =
+    dueRatio <= 2.5 ? 1 : Math.max(0, 1 - (dueRatio - 2.5) / 2.5);
+  const likelihood = ramp * lapse;
 
   const last = dated[dated.length - 1];
   const rationale =
