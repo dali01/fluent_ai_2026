@@ -17,6 +17,12 @@ export const permitSource: ProspectSource = {
     return Boolean(process.env.PERMIT_FEED_URL);
   },
 
+  unavailableReason() {
+    return process.env.PERMIT_FEED_URL
+      ? undefined
+      : "PERMIT_FEED_URL is not set — the permit parser also awaits a pilot feed format";
+  },
+
   async fetchBatch(_ctx: SourceContext): Promise<SourceResult> {
     return {
       prospects: [],
