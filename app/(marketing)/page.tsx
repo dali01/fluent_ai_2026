@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 import {
   ArrowRight,
   CheckCircle2,
@@ -76,7 +78,12 @@ const mockColumns = [
   },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // A signed-in user has no business on the pitch page — this also
+  // rescues sessions stranded here by a missing post-sign-in redirect.
+  const { userId } = await auth();
+  if (userId) redirect("/dashboard");
+
   return (
     <div className="flex flex-1 flex-col">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-md">
