@@ -1,7 +1,11 @@
 // Fluent AI — Prisma schema
-// Phase 0: skeleton only. The full multi-tenant data model lands in Phase 1.
-// Every tenant-scoped model MUST carry `organizationId` (enforced by the
-// tenant-scoped data-access layer in lib/db, built in Phase 1).
+//
+// Multi-tenancy rules (sacred):
+//   * Every tenant-scoped model carries `organizationId` and an index on it.
+//   * Application code accesses tenant data ONLY through the tenant-scoped
+//     client in lib/db/tenant.ts, which forces organizationId on every
+//     query. Never import the raw client in feature code.
+//   * Soft-delete (`deletedAt`) on business entities users can remove.
 
 generator client {
   provider = "prisma-client"
@@ -12,13 +16,716 @@ datasource db {
   provider = "postgresql"
 }
 
-// Mirrors a Clerk Organization. One row per print business (tenant).
+// ─────────────────────────────────────────────────────────────────
+// Tenancy & identity (mirrors Clerk)
+// ─────────────────────────────────────────────────────────────────
+
+/// One row per print business. `id` is the Clerk organization ID.
 model Organization {
-  id        String   @id // Clerk organization ID (org_...)
+  id        String   @id
   name      String
   slug      String?  @unique
   plan      String   @default("standard")
   settings  Json     @default("{}")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  memberships    Membership[]
+  companies      Company[]
+  contacts       Contact[]
+  leads          Lead[]
+  jobs           Job[]
+  jobFiles       JobFile[]
+  proofs         Proof[]
+  quotes         Quote[]
+  quoteLineItems QuoteLineItem[]
+  priceTiers     PriceTier[]
+  pricingRules   PricingRule[]
+  inventoryItems InventoryItem[]
+  stockMovements StockMovement[]
+  presses        Press[]
+  scheduleBlocks ScheduleBlock[]
+  vendors        Vendor[]
+  invoices       Invoice[]
+  payments       Payment[]
+  activityLogs   ActivityLog[]
+  aiTasks        AiTask[]
+  leadScores     LeadScore[]
+}
+
+/// One row per person. `id` is the Clerk user ID. Global (not tenant-scoped);
+/// org access is modeled by Membership.
+model User {
+  id        String   @id
+  email     String   @unique
+  name      String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  CSR
+  PRODUCTION
+  VIEWER
+}
+
+model Membership {
+  id             String     @id @default(cuid())
+  organizationId String
+  userId         String
+  role           MemberRole @default(VIEWER)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CRM: companies, contacts, pipeline
+// ─────────────────────────────────────────────────────────────────
+
+/// Client company OR agency/reseller (isReseller). Resellers get wholesale
+/// pricing via priceTier.
+model Company {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  isReseller     Boolean   @default(false)
+  priceTierId    String?
+  email          String?
+  phone          String?
+  website        String?
+  addressLine1   String?
+  addressLine2   String?
+  city           String?
+  postalCode     String?
+  country        String?
+  notes          String?
+  tags           String[]  @default([])
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceTier    PriceTier?   @relation(fields: [priceTierId], references: [id])
+  contacts     Contact[]
+  leads        Lead[]
+  jobs         Job[]
+  quotes       Quote[]
+  invoices     Invoice[]
+  leadScores   LeadScore[]
+
+  @@index([organizationId])
+  @@index([organizationId, name])
+}
+
+model Contact {
+  id             String    @id @default(cuid())
+  organizationId String
+  companyId      String?
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String?
+  title          String?
+  notes          String?
+  tags           String[]  @default([])
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company      Company?      @relation(fields: [companyId], references: [id])
+  leads        Lead[]
+  proofs       Proof[]
+  activityLogs ActivityLog[]
+
+  @@index([organizationId])
+  @@index([organizationId, email])
+  @@index([companyId])
+}
+
+enum LeadStage {
+  QUOTE_REQUESTED
+  QUOTED
+  APPROVED
+  IN_PRODUCTION
+  DELIVERED
+  REPEAT
+}
+
+/// Lead / opportunity on the pipeline kanban.
+model Lead {
+  id             String    @id @default(cuid())
+  organizationId String
+  title          String
+  stage          LeadStage @default(QUOTE_REQUESTED)
+  contactId      String?
+  companyId      String?
+  value          Decimal?  @db.Decimal(12, 2)
+  source         String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact?     @relation(fields: [contactId], references: [id])
+  company      Company?     @relation(fields: [companyId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, stage])
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Production: jobs, files, proofs
+// ─────────────────────────────────────────────────────────────────
+
+enum JobStatus {
+  DESIGN
+  PROOFING
+  PREPRESS
+  PRINTING
+  FINISHING
+  SHIPPING
+  DONE
+}
+
+enum ColorMode {
+  CMYK
+  SPOT
+  PANTONE
+  BLACK_WHITE
+}
+
+model Job {
+  id             String    @id @default(cuid())
+  organizationId String
+  jobNumber      Int
+  title          String
+  status         JobStatus @default(DESIGN)
+  companyId      String
+  quoteId        String?   @unique
+  pressId        String?
+  // Print-specific
+  stock          String? // e.g. "170gsm silk"
+  sizeName       String? // e.g. "A4", "90x55mm"
+  widthMm        Decimal?  @db.Decimal(8, 2)
+  heightMm       Decimal?  @db.Decimal(8, 2)
+  colorMode      ColorMode @default(CMYK)
+  finish         String? // e.g. "matte laminate"
+  binding        String? // e.g. "saddle stitch"
+  quantity       Int       @default(0)
+  bleedMm        Decimal?  @db.Decimal(5, 2)
+  trimMm         Decimal?  @db.Decimal(5, 2)
+  rush           Boolean   @default(false)
+  dueDate        DateTime?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company        Company         @relation(fields: [companyId], references: [id])
+  quote          Quote?          @relation(fields: [quoteId], references: [id])
+  press          Press?          @relation(fields: [pressId], references: [id])
+  files          JobFile[]
+  proofs         Proof[]
+  invoices       Invoice[]
+  stockMovements StockMovement[]
+  scheduleBlocks ScheduleBlock[]
+  activityLogs   ActivityLog[]
+
+  @@unique([organizationId, jobNumber])
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([companyId])
+}
+
+enum FileApprovalStatus {
+  PENDING
+  PASSED
+  FAILED
+  WAIVED
+}
+
+/// Uploaded artwork/proof file (Vercel Blob behind lib/storage).
+model JobFile {
+  id             String             @id @default(cuid())
+  organizationId String
+  jobId          String
+  version        Int                @default(1)
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  blobKey        String // storage key — provider-agnostic
+  kind           String             @default("artwork") // artwork | proof | other
+  prepressResult Json? // deterministic check output
+  approvalStatus FileApprovalStatus @default(PENDING)
+  uploadedById   String? // Clerk user ID; null when client-uploaded via portal
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  job          Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  proofs       Proof[]
+
+  @@unique([jobId, fileName, version])
+  @@index([organizationId])
+  @@index([jobId])
+}
+
+enum ProofStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+/// A proof sent to the client for approval. E-signature record stored for
+/// legal protection.
+model Proof {
+  id              String      @id @default(cuid())
+  organizationId  String
+  jobId           String
+  jobFileId       String?
+  contactId       String?
+  status          ProofStatus @default(DRAFT)
+  sentAt          DateTime?
+  respondedAt     DateTime?
+  clientComment   String?
+  /// { signerName, signerEmail, ip, userAgent, signedAt, signatureHash }
+  signatureRecord Json?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  job          Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobFile      JobFile?     @relation(fields: [jobFileId], references: [id])
+  contact      Contact?     @relation(fields: [contactId], references: [id])
+
+  @@index([organizationId])
+  @@index([jobId])
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Quoting & pricing
+// ─────────────────────────────────────────────────────────────────
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CONVERTED
+}
+
+model Quote {
+  id               String      @id @default(cuid())
+  organizationId   String
+  quoteNumber      Int
+  companyId        String
+  status           QuoteStatus @default(DRAFT)
+  priceTierId      String?
+  subtotal         Decimal     @default(0) @db.Decimal(12, 2)
+  taxRate          Decimal     @default(0) @db.Decimal(5, 4)
+  taxAmount        Decimal     @default(0) @db.Decimal(12, 2)
+  total            Decimal     @default(0) @db.Decimal(12, 2)
+  /// pricing engine breakdown (inputs, applied rules, tier)
+  pricingBreakdown Json?
+  validUntil       DateTime?
+  notes            String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  deletedAt        DateTime?
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company      Company         @relation(fields: [companyId], references: [id])
+  priceTier    PriceTier?      @relation(fields: [priceTierId], references: [id])
+  lineItems    QuoteLineItem[]
+  job          Job?
+  invoices     Invoice[]
+
+  @@unique([organizationId, quoteNumber])
+  @@index([organizationId])
+  @@index([organizationId, status])
+}
+
+model QuoteLineItem {
+  id             String   @id @default(cuid())
+  organizationId String
+  quoteId        String
+  description    String
+  quantity       Int      @default(1)
+  unitPrice      Decimal  @default(0) @db.Decimal(12, 4)
+  total          Decimal  @default(0) @db.Decimal(12, 2)
+  /// print specs feeding the pricing engine (stock, finish, colorMode, ...)
+  specs          Json?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quote        Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([quoteId])
+}
+
+/// Wholesale/reseller pricing tier — a multiplier off list price.
+model PriceTier {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  /// 1.0 = list price; 0.8 = 20% off (typical reseller)
+  multiplier     Decimal  @default(1) @db.Decimal(6, 4)
+  isResellerTier Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  companies    Company[]
+  quotes       Quote[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+enum PricingRuleType {
+  STOCK
+  QUANTITY_TIER
+  FINISHING
+  RUSH_FEE
+  SETUP_FEE
+}
+
+/// Variable pricing inputs for the pricing engine (Phase 4).
+model PricingRule {
+  id             String          @id @default(cuid())
+  organizationId String
+  name           String
+  type           PricingRuleType
+  active         Boolean         @default(true)
+  /// engine parameters, validated by Zod at the pricing layer
+  config         Json
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, type, active])
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Inventory & scheduling
+// ─────────────────────────────────────────────────────────────────
+
+enum InventoryType {
+  PAPER
+  INK
+  OTHER
+}
+
+model InventoryItem {
+  id               String        @id @default(cuid())
+  organizationId   String
+  name             String
+  type             InventoryType @default(PAPER)
+  sku              String?
+  unit             String        @default("sheet") // sheet | kg | litre | roll | unit
+  quantityOnHand   Decimal       @default(0) @db.Decimal(12, 3)
+  reorderThreshold Decimal       @default(0) @db.Decimal(12, 3)
+  costPerUnit      Decimal?      @db.Decimal(12, 4)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  deletedAt        DateTime?
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stockMovements StockMovement[]
+
+  @@index([organizationId])
+  @@index([organizationId, type])
+}
+
+enum StockMovementReason {
+  PURCHASE
+  JOB_CONSUMPTION
+  ADJUSTMENT
+  WASTE
+  RETURN
+}
+
+/// Auditable stock ledger. Auto-deduct on job completion writes here.
+model StockMovement {
+  id              String              @id @default(cuid())
+  organizationId  String
+  inventoryItemId String
+  jobId           String?
+  /// positive = stock in, negative = stock out
+  delta           Decimal             @db.Decimal(12, 3)
+  reason          StockMovementReason
+  note            String?
+  createdAt       DateTime            @default(now())
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  job           Job?          @relation(fields: [jobId], references: [id])
+
+  @@index([organizationId])
+  @@index([inventoryItemId])
+}
+
+/// Schedulable press/equipment.
+model Press {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  kind           String? // offset | digital | wide-format | finishing | ...
+  notes          String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  jobs           Job[]
+  scheduleBlocks ScheduleBlock[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+/// Booked time on a press. Double-booking prevention is enforced in the
+/// scheduling service (overlap check inside a transaction) — Postgres
+/// exclusion constraints aren't expressible in Prisma schema.
+model ScheduleBlock {
+  id             String   @id @default(cuid())
+  organizationId String
+  pressId        String
+  jobId          String?
+  startsAt       DateTime
+  endsAt         DateTime
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  press        Press        @relation(fields: [pressId], references: [id], onDelete: Cascade)
+  job          Job?         @relation(fields: [jobId], references: [id])
+
+  @@index([organizationId])
+  @@index([pressId, startsAt, endsAt])
+}
+
+/// Vendor for outsourced jobs.
+model Vendor {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  email          String?
+  phone          String?
+  services       String? // e.g. "foiling, die-cutting"
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Financials
+// ─────────────────────────────────────────────────────────────────
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  VOID
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  organizationId String
+  invoiceNumber  Int
+  companyId      String
+  quoteId        String?
+  jobId          String?
+  status         InvoiceStatus @default(DRAFT)
+  subtotal       Decimal       @default(0) @db.Decimal(12, 2)
+  taxAmount      Decimal       @default(0) @db.Decimal(12, 2)
+  total          Decimal       @default(0) @db.Decimal(12, 2)
+  /// deposit requested up-front (50% is common in print)
+  depositAmount  Decimal?      @db.Decimal(12, 2)
+  dueDate        DateTime?
+  issuedAt       DateTime?
+  /// external accounting sync (QuickBooks/Xero) — Phase 7 stub
+  externalSyncId String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company      Company      @relation(fields: [companyId], references: [id])
+  quote        Quote?       @relation(fields: [quoteId], references: [id])
+  job          Job?         @relation(fields: [jobId], references: [id])
+  payments     Payment[]
+
+  @@unique([organizationId, invoiceNumber])
+  @@index([organizationId])
+  @@index([organizationId, status])
+}
+
+enum PaymentMethod {
+  CARD
+  BANK_TRANSFER
+  CASH
+  CHECK
+  OTHER
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  organizationId String
+  invoiceId      String
+  amount         Decimal       @db.Decimal(12, 2)
+  method         PaymentMethod @default(BANK_TRANSFER)
+  isDeposit      Boolean       @default(false)
+  paidAt         DateTime      @default(now())
+  reference      String?
+  createdAt      DateTime      @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoice      Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([invoiceId])
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Audit & AI
+// ─────────────────────────────────────────────────────────────────
+
+enum ActivityType {
+  NOTE
+  EMAIL
+  SMS
+  CALL
+  MEETING
+  STATUS_CHANGE
+  FILE_UPLOADED
+  PROOF_SENT
+  PROOF_APPROVED
+  PROOF_REJECTED
+  QUOTE_SENT
+  INVOICE_SENT
+  PAYMENT_RECEIVED
+  SYSTEM
+}
+
+/// Generic activity/communication log tying events to contacts and jobs.
+model ActivityLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  type           ActivityType
+  summary        String
+  payload        Json?
+  contactId      String?
+  jobId          String?
+  /// Clerk user ID of the actor; null for system/AI events
+  actorId        String?
+  createdAt      DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact?     @relation(fields: [contactId], references: [id])
+  job          Job?         @relation(fields: [jobId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([contactId])
+  @@index([jobId])
+}
+
+enum AiTaskKind {
+  LEAD_ENRICHMENT
+  REORDER_SCORING
+  CHURN_FLAGGING
+  OUTREACH_DRAFT
+  PREPRESS_EXPLANATION
+  BATCHING_SUGGESTION
+  TURNAROUND_ESTIMATE
+  WASTE_ESTIMATE
+  DEMAND_FORECAST
+  PORTAL_QUOTE_CHAT
+}
+
+enum AiTaskStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+/// Background AI job record: inputs, structured output, cost/usage.
+model AiTask {
+  id             String       @id @default(cuid())
+  organizationId String
+  kind           AiTaskKind
+  status         AiTaskStatus @default(PENDING)
+  input          Json?
+  output         Json?
+  error          String?
+  model          String?
+  inputTokens    Int?
+  outputTokens   Int?
+  costCents      Int?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, kind])
+  @@index([organizationId, status])
+}
+
+/// AI-computed scores per company: reorder likelihood, churn risk,
+/// enrichment data. One current row per company (upserted by cron).
+model LeadScore {
+  id                String   @id @default(cuid())
+  organizationId    String
+  companyId         String
+  /// 0..1 likelihood the client reorders soon (history/seasonality)
+  reorderLikelihood Float?
+  /// 0..1 churn/dormancy risk
+  churnRisk         Float?
+  enrichment        Json?
+  rationale         String?
+  computedAt        DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, companyId])
+  @@index([organizationId, churnRisk])
 }
