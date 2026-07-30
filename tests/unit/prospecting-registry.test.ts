@@ -45,6 +45,19 @@ describe("source registry is completely wired", () => {
     expect(config.sources[id]).toBe(SOURCE_META[id].defaultEnabled);
   });
 
+  it.each(SOURCE_IDS)("%s survives a round-trip through the schema", (id) => {
+    // The test above only exercises the `undefined` path, where zod
+    // hands back the literal default object — a key missing from the
+    // OBJECT schema still appears. Parsing a stored config is what
+    // catches it: unknown keys are stripped and missing keys stay
+    // undefined, which is the permanent-skip bug.
+    const stored = prospectingConfigSchema.parse({
+      enabled: true,
+      sources: {},
+    });
+    expect(typeof stored.sources[id]).toBe("boolean");
+  });
+
   it.each(SOURCE_IDS)("%s maps to a Prisma enum value", (id) => {
     expect(SOURCE_ENUM[id]).toBe(SOURCE_META[id].enumValue);
   });

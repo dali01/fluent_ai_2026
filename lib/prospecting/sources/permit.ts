@@ -48,6 +48,21 @@ export function isArcGisUrl(url: string): boolean {
   return /\/(FeatureServer|MapServer)\//i.test(url);
 }
 
+/**
+ * Open-data portals publish civil timestamps with NO timezone
+ * ("2026-07-24T00:00:00.000"), which `new Date()` reads as *local* time
+ * — so the same feed would yield different dates on a UTC+2 laptop and
+ * on Vercel (UTC), shifting recency scores and the watermark by a day.
+ * Interpret them as UTC, which is stable everywhere.
+ */
+export function parseFeedDate(value: string): Date | undefined {
+  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(value);
+  const date = new Date(
+    hasZone || !value.includes("T") ? value : `${value}Z`,
+  );
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
 function str(row: Record<string, unknown>, field: string): string | undefined {
   const value = row[field];
   if (value === null || value === undefined) return undefined;
@@ -90,7 +105,7 @@ export function parsePermitResponse(
       .map((f) => str(row, f))
       .filter((v): v is string => Boolean(v));
     const dateValue = config.dateField ? str(row, config.dateField) : undefined;
-    const triggeredAt = dateValue ? new Date(dateValue) : undefined;
+    const triggeredAt = dateValue ? parseFeedDate(dateValue) : undefined;
 
     out.push({
       externalId,
@@ -101,10 +116,7 @@ export function parsePermitResponse(
           : ""
       }`,
       category: config.categoryField ? str(row, config.categoryField) : undefined,
-      triggeredAt:
-        triggeredAt && !Number.isNaN(triggeredAt.getTime())
-          ? triggeredAt
-          : undefined,
+      triggeredAt,
       address: {
         line1: addressParts.length > 0 ? addressParts.join(" ") : undefined,
         city: str(row, "city") ?? str(row, "City"),
