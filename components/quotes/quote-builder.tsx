@@ -18,8 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { saveQuote } from "@/lib/actions/quotes";
-import type { Currency } from "@/lib/db/org-settings";
-import { formatMoney } from "@/lib/format/money";
+import { type Currency, formatMoney } from "@/lib/format/money";
 import { computeQuote, type EngineRule } from "@/lib/pricing/engine";
 
 export type BuilderCompany = {

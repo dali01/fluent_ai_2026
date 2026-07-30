@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CURRENCIES } from "@/lib/format/money";
 import { getDb } from "./client";
 
 /**
@@ -7,9 +8,6 @@ import { getDb } from "./client";
  * this is the ONE place prospecting config touches the raw client. Reads
  * are zod-validated; unknown/absent config degrades to safe defaults.
  */
-
-export const CURRENCIES = ["SEK", "EUR", "USD", "GBP", "NOK", "DKK"] as const;
-export type Currency = (typeof CURRENCIES)[number];
 
 export const generalConfigSchema = z
   .object({

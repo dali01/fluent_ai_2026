@@ -1,4 +1,6 @@
-import type { Currency } from "@/lib/db/org-settings";
+/** Client-safe: currency constants live here, NOT in lib/db (pg/dns). */
+export const CURRENCIES = ["SEK", "EUR", "USD", "GBP", "NOK", "DKK"] as const;
+export type Currency = (typeof CURRENCIES)[number];
 
 /**
  * All money rendering goes through here — the org's currency comes from

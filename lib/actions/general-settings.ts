@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireOrg } from "@/lib/auth/require-org";
-import { CURRENCIES, writeGeneralConfig } from "@/lib/db/org-settings";
+import { writeGeneralConfig } from "@/lib/db/org-settings";
+import { CURRENCIES } from "@/lib/format/money";
 import { type ActionResult, actionOk } from "./form";
 
 const inputSchema = z.object({ currency: z.enum(CURRENCIES) });

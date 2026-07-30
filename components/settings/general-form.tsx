@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import type { ActionResult } from "@/lib/actions/form";
 import { updateGeneralSettings } from "@/lib/actions/general-settings";
-import { CURRENCIES, type Currency } from "@/lib/db/org-settings";
+import { CURRENCIES, type Currency } from "@/lib/format/money";
 
 const CURRENCY_LABELS: Record<Currency, string> = {
   SEK: "SEK — Swedish krona",

@@ -14,8 +14,7 @@ import { GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { moveLeadStage } from "@/lib/actions/leads";
-import type { Currency } from "@/lib/db/org-settings";
-import { formatMoney } from "@/lib/format/money";
+import { type Currency, formatMoney } from "@/lib/format/money";
 import { LEAD_STAGES } from "@/lib/validation/crm";
 import { cn } from "@/lib/utils";
 
