@@ -50,9 +50,26 @@ export async function writeGeneralConfig(
   });
 }
 
+/**
+ * Which discovery agents this org runs. Separate from the master
+ * `enabled` switch: `enabled` turns prospecting off entirely, `sources`
+ * picks the agents. Defaults mirror SOURCE_META.defaultEnabled — permit
+ * stays off because its connector is still a stub.
+ */
+export const sourceTogglesSchema = z
+  .object({
+    fda: z.boolean().default(true),
+    places: z.boolean().default(true),
+    permit: z.boolean().default(false),
+  })
+  .default({ fda: true, places: true, permit: false });
+
+export type SourceToggles = z.infer<typeof sourceTogglesSchema>;
+
 export const prospectingConfigSchema = z
   .object({
     enabled: z.boolean().default(false),
+    sources: sourceTogglesSchema,
     market: z
       .object({
         country: z.string().default("SE"),
@@ -95,6 +112,7 @@ export const prospectingConfigSchema = z
   })
   .default({
     enabled: false,
+    sources: { fda: true, places: true, permit: false },
     placesQueries: [],
     fda: { enabled: true, dosageFormAllowlist: [], applicationTypes: [] },
     enrichment: { minScore: 60, maxPerRun: 10 },
