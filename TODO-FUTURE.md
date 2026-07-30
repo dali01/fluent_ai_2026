@@ -28,3 +28,12 @@
   another org's parent row should throw rather than rely on FK+where).
 - **Per-org number sequences** — allocation helper for jobNumber /
   quoteNumber / invoiceNumber (transactional, gap-tolerant).
+- **Portal rate limiting + token expiry** — bearer tokens currently live
+  until rotated; add expiry, per-IP throttling (Phase 9 hardening).
+- **Notification preferences** — who gets which emails per company;
+  currently the oldest emailable contact receives everything.
+- **Base UI nativeButton warning** — Buttons rendering <Link> via render
+  prop log an a11y warning in dev; audit and set nativeButton={false}
+  where appropriate.
+- **Portal storefront v2** — quantity/spec tweaks on reorder, new-product
+  ordering, AI quote chatbot (Phase 8).
