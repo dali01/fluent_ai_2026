@@ -65,3 +65,23 @@ Running log — newest last. Format: date, decision, why.
 - **Seed goes through tenantDb()**, not the raw client, so seeding also
   smoke-tests the isolation layer. `SEED_ORG_ID`/`SEED_ORG_NAME` let us
   seed a real Clerk org instead of the demo one.
+
+## 2026-07-30 — Phase 2
+
+- **DB adapter picked by connection string**: localhost URLs use
+  `@prisma/adapter-pg` (Docker Postgres for dev, container `fluent-pg`),
+  everything else `@prisma/adapter-neon` (production). One env var, no
+  config flag to forget.
+- **Prisma CLI env loading matches Next.js**: `.env.local` then `.env`
+  (prisma.config.ts + seed). The placeholder `.env` from prisma init was
+  deleted.
+- **Forms are server-action-first**: FormData → `parseForm` (Zod) →
+  tenantDb, with `useActionState` for pending/error UI. No client-side
+  form library; server validation is the source of truth.
+- **Kanban drag-drop = @dnd-kit/core + useOptimistic**: card moves render
+  instantly, server action persists, toast on failure. Column = droppable
+  stage, card = draggable lead.
+- **Archive, not delete**, everywhere in CRM UI (sets `deletedAt`; lists
+  filter it out). Restore UI is future work.
+- **scripts/smoke-crm.ts** replays every page query + live cross-tenant
+  probes against the seeded DB — run it after schema changes.
