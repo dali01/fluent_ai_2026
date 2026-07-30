@@ -8,6 +8,50 @@ import { getDb } from "./client";
  * are zod-validated; unknown/absent config degrades to safe defaults.
  */
 
+export const CURRENCIES = ["SEK", "EUR", "USD", "GBP", "NOK", "DKK"] as const;
+export type Currency = (typeof CURRENCIES)[number];
+
+export const generalConfigSchema = z
+  .object({
+    currency: z.enum(CURRENCIES).default("SEK"),
+  })
+  .default({ currency: "SEK" });
+
+export type GeneralConfig = z.infer<typeof generalConfigSchema>;
+
+export async function readGeneralConfig(orgId: string): Promise<GeneralConfig> {
+  const org = await getDb().organization.findUnique({
+    where: { id: orgId },
+    select: { settings: true },
+  });
+  const raw =
+    org?.settings && typeof org.settings === "object"
+      ? (org.settings as Record<string, unknown>).general
+      : undefined;
+  const parsed = generalConfigSchema.safeParse(raw ?? undefined);
+  return parsed.success ? parsed.data : generalConfigSchema.parse(undefined);
+}
+
+export async function writeGeneralConfig(
+  orgId: string,
+  config: GeneralConfig,
+): Promise<void> {
+  const org = await getDb().organization.findUniqueOrThrow({
+    where: { id: orgId },
+    select: { settings: true },
+  });
+  const settings =
+    org.settings && typeof org.settings === "object"
+      ? (org.settings as Record<string, unknown>)
+      : {};
+  await getDb().organization.update({
+    where: { id: orgId },
+    data: {
+      settings: JSON.parse(JSON.stringify({ ...settings, general: config })),
+    },
+  });
+}
+
 export const prospectingConfigSchema = z
   .object({
     enabled: z.boolean().default(false),
