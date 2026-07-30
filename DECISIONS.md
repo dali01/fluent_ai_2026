@@ -184,6 +184,19 @@ Running log — newest last. Format: date, decision, why.
   server races pre-commit tsc with partially-written generated types.
 - **Known cosmetic**: Base UI logs a nativeButton warning for Buttons
   rendering <Link>/<a> via render prop — harmless, tracked in TODO.
+
+## 2026-07-30 — Phase 7
+
+- **Paid states are payment-driven only**: recording payments flips
+  invoices to PARTIALLY_PAID/PAID from the paid-total; manual transitions
+  cover SENT/OVERDUE/VOID. Overpayment is rejected.
+- **Accounting sync behind lib/accounting** — invoice SENT pushes to the
+  provider and stores externalSyncId; payments push when the invoice is
+  synced. Stub provider today; QuickBooks/Xero swap in on env vars
+  (TODO-FUTURE). Sync ids are visible on the invoice page.
+- **Profitability = material margin** (invoice ex-VAT revenue, quote
+  fallback; consumption × item unit cost). Incomplete costing is flagged
+  rather than guessed. Labour costing is future work.
 - All colors flow through the shadcn/Tailwind v4 tokens in
   `app/globals.css` — no hardcoded hex in components (the logo/gradient
   use explicit oklch because SVG/inline-gradients can't read CSS vars in
