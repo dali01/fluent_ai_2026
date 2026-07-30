@@ -5,6 +5,7 @@ import {
 } from "@/components/crm/pipeline-board";
 import { requireOrg } from "@/lib/auth/require-org";
 import { tenantDb } from "@/lib/db/tenant";
+import { LEAD_STAGES } from "@/lib/validation/crm";
 
 export const metadata = { title: "Pipeline" };
 
@@ -14,12 +15,14 @@ export default async function PipelinePage() {
 
   const [leads, companies, contacts] = await Promise.all([
     db.lead.findMany({
-      where: { deletedAt: null },
+      // Kanban stages only — sourced prospects live on /prospects (§1a)
+      where: { deletedAt: null, stage: { in: [...LEAD_STAGES] } },
       include: {
         company: { select: { name: true } },
         contact: { select: { firstName: true, lastName: true } },
       },
       orderBy: { updatedAt: "desc" },
+      take: 500,
     }),
     db.company.findMany({
       where: { deletedAt: null },

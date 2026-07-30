@@ -42,7 +42,14 @@ export default async function DashboardPage() {
     db.contact.count({ where: { deletedAt: null } }),
     db.company.count({ where: { deletedAt: null } }),
     db.lead.findMany({
-      where: { deletedAt: null, stage: { notIn: ["DELIVERED", "REPEAT"] } },
+      // Kanban stages only (prospects excluded), minus the closed stages
+      where: {
+        deletedAt: null,
+        stage: {
+          in: [...LEAD_STAGES],
+          notIn: ["DELIVERED", "REPEAT"],
+        },
+      },
       select: { value: true, stage: true },
     }),
     db.job.count({ where: { deletedAt: null, status: { not: "DONE" } } }),
