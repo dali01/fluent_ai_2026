@@ -5,7 +5,11 @@ import {
   PricingRuleDialog,
 } from "@/components/settings/pricing-forms";
 import { GeneralSettingsForm } from "@/components/settings/general-form";
-import { ProspectingSettingsForm } from "@/components/settings/prospecting-form";
+import {
+  ProspectingSettingsForm,
+  type SourceAvailability,
+} from "@/components/settings/prospecting-form";
+import { getSource, SOURCE_IDS } from "@/lib/prospecting/sources";
 import {
   readGeneralConfig,
   readProspectingConfig,
@@ -29,26 +33,36 @@ export default async function SettingsPage() {
   const { orgId } = await requireOrg();
   const db = tenantDb(orgId);
 
-  const [tiers, rules, prospecting, general, organization] = await Promise.all(
-    [
-      db.priceTier.findMany({ orderBy: { name: "asc" } }),
-      db.pricingRule.findMany({ orderBy: [{ type: "asc" }, { name: "asc" }] }),
-      readProspectingConfig(orgId),
-      readGeneralConfig(orgId),
-      (async () =>
-        (await clerkClient()).organizations
-          .getOrganization({ organizationId: orgId })
-          .catch(() => null))(),
-    ],
-  );
+  const [tiers, rules, prospecting, general, organization] = await Promise.all([
+    db.priceTier.findMany({ orderBy: { name: "asc" } }),
+    db.pricingRule.findMany({ orderBy: [{ type: "asc" }, { name: "asc" }] }),
+    readProspectingConfig(orgId),
+    readGeneralConfig(orgId),
+    (async () =>
+      (await clerkClient()).organizations
+        .getOrganization({ organizationId: orgId })
+        .catch(() => null))(),
+  ]);
+
+  // Availability is a server-side fact (env + config); the form only
+  // renders it.
+  const sourceAvailability: SourceAvailability[] = SOURCE_IDS.map((id) => ({
+    id,
+    enabled: prospecting.sources[id],
+    unavailableReason: getSource(id, {
+      queries: prospecting.placesQueries,
+      center: prospecting.market?.center,
+      radiusMeters: prospecting.market?.radiusMeters,
+    }).unavailableReason(),
+  }));
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">
-          {organization?.name ?? orgId} — every setting here is specific to
-          this organization.
+          {organization?.name ?? orgId} — every setting here is specific to this
+          organization.
         </p>
       </div>
 
@@ -113,6 +127,7 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <ProspectingSettingsForm
+            sources={sourceAvailability}
             initial={{
               enabled: prospecting.enabled,
               city: prospecting.market?.city ?? "",

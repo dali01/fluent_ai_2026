@@ -10,15 +10,21 @@ import { Button } from "@/components/ui/button";
 import { readProspectingConfig } from "@/lib/db/org-settings";
 import { requireOrg } from "@/lib/auth/require-org";
 import { tenantDb } from "@/lib/db/tenant";
+import {
+  getSource,
+  SOURCE_ENUM,
+  SOURCE_IDS,
+  SOURCE_META,
+} from "@/lib/prospecting/sources";
 import { prospectFilterSchema } from "@/lib/validation/prospecting";
 
 export const metadata = { title: "Prospects" };
 
-const SOURCES: Array<{ id: string; label: string; enum: string }> = [
-  { id: "fda", label: "FDA", enum: "FDA" },
-  { id: "places", label: "Places", enum: "PLACES" },
-  { id: "permit", label: "Permits", enum: "PERMIT" },
-];
+const SOURCES = SOURCE_IDS.map((id) => ({
+  id,
+  label: SOURCE_META[id].label,
+  enum: SOURCE_ENUM[id],
+}));
 
 export default async function ProspectsPage({
   searchParams,
@@ -56,6 +62,19 @@ export default async function ProspectsPage({
     readProspectingConfig(orgId),
   ]);
 
+  // Per-agent state: switched on for this org, and actually runnable
+  const agentState = SOURCE_IDS.map((id) => ({
+    id,
+    label: SOURCE_META[id].label,
+    enumValue: SOURCE_ENUM[id],
+    enabledForOrg: config.sources[id],
+    unavailableReason: getSource(id, {
+      queries: config.placesQueries,
+      center: config.market?.center,
+      radiusMeters: config.market?.radiusMeters,
+    }).unavailableReason(),
+  }));
+
   const rows: ProspectRowData[] = prospects.map((p) => ({
     id: p.id,
     businessName: p.notes ?? p.title,
@@ -86,8 +105,13 @@ export default async function ProspectsPage({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {SOURCES.map((s) => (
-            <RunSourceButton key={s.id} sourceId={s.id} label={s.label} />
+          {agentState.map((a) => (
+            <RunSourceButton
+              key={a.id}
+              sourceId={a.id}
+              label={a.label}
+              available={a.enabledForOrg && !a.unavailableReason}
+            />
           ))}
         </div>
       </div>
@@ -102,13 +126,26 @@ export default async function ProspectsPage({
         </div>
       ) : null}
 
-      {/* Last-run strip — the entire ops surface for unattended operation */}
-      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-        {SOURCES.map((s, i) => {
+      {/* Last-run strip — the entire ops surface for unattended
+          operation. An agent that can't run says so here, so a skipped
+          run is never a mystery. */}
+      <div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+        {agentState.map((a, i) => {
           const run = lastRuns[i];
+          const blocked = !a.enabledForOrg
+            ? "switched off for this organization"
+            : a.unavailableReason;
           return (
-            <span key={s.id} className="flex items-center gap-1.5">
-              <span className="font-medium">{s.label}:</span>
+            <span key={a.id} className="flex flex-wrap items-center gap-1.5">
+              <span className="font-medium">{a.label}:</span>
+              {blocked ? (
+                <Badge
+                  variant="outline"
+                  className="border-chart-3/40 px-1.5 py-0 text-chart-3"
+                >
+                  {blocked}
+                </Badge>
+              ) : null}
               {run ? (
                 <>
                   <Badge
