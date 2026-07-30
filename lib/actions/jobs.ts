@@ -112,9 +112,69 @@ export async function moveJobStatus(
     },
   });
 
+  if (status === "DONE") {
+    await consumeJobMaterials(orgId, jobId, job.jobNumber, userId);
+  }
+
   revalidatePath("/jobs");
   revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/inventory");
   return actionOk;
+}
+
+/**
+ * Auto-deduct on completion: turn planned materials into JOB_CONSUMPTION
+ * movements. Idempotent — an item already consumed for this job is
+ * skipped, so re-entering DONE never double-deducts. Stock may go
+ * negative here by design (the print run already happened; the ledger
+ * must reflect reality) — the low-stock alert catches it.
+ */
+async function consumeJobMaterials(
+  orgId: string,
+  jobId: string,
+  jobNumber: number,
+  userId: string,
+): Promise<void> {
+  const db = tenantDb(orgId);
+  const [materials, existing] = await Promise.all([
+    db.jobMaterial.findMany({
+      where: { jobId },
+      include: { inventoryItem: { select: { name: true, unit: true } } },
+    }),
+    db.stockMovement.findMany({
+      where: { jobId, reason: "JOB_CONSUMPTION" },
+      select: { inventoryItemId: true },
+    }),
+  ]);
+  const consumed = new Set(existing.map((m) => m.inventoryItemId));
+  const pending = materials.filter((m) => !consumed.has(m.inventoryItemId));
+  if (pending.length === 0) return;
+
+  for (const material of pending) {
+    await db.stockMovement.create({
+      data: {
+        organizationId: orgId,
+        inventoryItemId: material.inventoryItemId,
+        jobId,
+        delta: -Number(material.quantityPlanned),
+        reason: "JOB_CONSUMPTION",
+        note: `Auto-deduct on job #${jobNumber} completion`,
+      },
+    });
+    await db.inventoryItem.update({
+      where: { id: material.inventoryItemId },
+      data: { quantityOnHand: { decrement: material.quantityPlanned } },
+    });
+  }
+  await db.activityLog.create({
+    data: {
+      organizationId: orgId,
+      type: "SYSTEM",
+      summary: `Job #${jobNumber} done — ${pending.length} material(s) deducted from stock`,
+      jobId,
+      actorId: userId,
+    },
+  });
 }
 
 /** One-click reorder: clone specs into a fresh job in DESIGN. */
