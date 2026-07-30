@@ -147,10 +147,99 @@ async function main() {
     }
   }
 
+  // Demo prospects + a source run (both fresh and re-run paths)
+  async function ensureProspects() {
+    const existing = await t.lead.count({ where: { stage: "PROSPECT" } });
+    if (existing > 0) return;
+    await t.lead.createMany({
+      data: [
+        {
+          ...org,
+          title: "New business licence 2026-07-14",
+          stage: "PROSPECT",
+          prospectSource: "PERMIT",
+          triggerReason: "New business licence 2026-07-14",
+          category: "cafe",
+          externalId: "seed-permit-0001",
+          normalizedName: "kaffeverket",
+          locationKey: "kaffeverket|vastra storgatan 8|55315",
+          addressLine1: "Västra Storgatan 8",
+          city: "Jönköping",
+          postalCode: "55315",
+          country: "SE",
+          notes: "Kaffeverket AB",
+          enrichmentStatus: "PENDING",
+          score: 78,
+          scoreBreakdown: [
+            { factor: "recency", points: 40, detail: "16d old, half-life 30d" },
+            { factor: "category-fit", points: 35, detail: "fit 100%" },
+            { factor: "proximity", points: 0, detail: "no geo data" },
+            {
+              factor: "repeat-signal",
+              points: 3,
+              detail: "signal strength 60%",
+            },
+          ],
+          rationale:
+            "recency: +40 (16d old, half-life 30d); category-fit: +35 (fit 100%); repeat-signal: +3",
+          signal: { permitNo: "2026-0001", kind: "food service" },
+          triggeredAt: new Date("2026-07-14"),
+          discoveredAt: new Date(),
+        },
+        {
+          ...org,
+          title: "FDA approval — Lumivex (tablet)",
+          stage: "PROSPECT",
+          prospectSource: "FDA",
+          triggerReason: "FDA approval — Lumivex (tablet)",
+          category: "pharma",
+          externalId: "NDA099999:ORIG1",
+          normalizedName: "helix therapeutics",
+          notes: "Helix Therapeutics Inc",
+          enrichmentStatus: "SKIPPED",
+          score: 62,
+          scoreBreakdown: [
+            { factor: "recency", points: 25, detail: "21d old, half-life 45d" },
+            { factor: "category-fit", points: 45, detail: "fit 100%" },
+            { factor: "proximity", points: 0, detail: "nationwide" },
+            { factor: "repeat-signal", points: 20, detail: "ORIG approval" },
+          ],
+          rationale:
+            "recency: +25; category-fit: +45; repeat-signal: +20 (ORIG approval)",
+          signal: {
+            applicationNumber: "NDA099999",
+            brandName: "Lumivex",
+            dosageForm: "TABLET",
+            marketingStatus: "Prescription",
+            isOriginal: true,
+          },
+          triggeredAt: new Date("2026-07-09"),
+          discoveredAt: new Date(),
+        },
+      ],
+    });
+    await t.sourceRun.create({
+      data: {
+        ...org,
+        source: "FDA",
+        status: "SUCCEEDED",
+        cursor: "20260730",
+        fetched: 2,
+        created: 2,
+        duplicates: 0,
+        screenedOut: 0,
+        enriched: 0,
+        finishedAt: new Date(),
+      },
+    });
+    console.log("Seed: demo prospects + source run created.");
+  }
+
   // Companies (idempotent-ish: skip if any exist)
   const existingCompanies = await t.company.count();
   if (existingCompanies > 0) {
     await ensurePortalToken();
+    await ensureProspects();
     console.log("Seed: companies already present, skipping business data.");
     return;
   }
@@ -434,6 +523,7 @@ async function main() {
   });
 
   await ensurePortalToken();
+  await ensureProspects();
   console.log(`Seed complete for organization ${ORG_ID} (${ORG_NAME}).`);
 }
 
