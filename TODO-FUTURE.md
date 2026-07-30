@@ -26,6 +26,10 @@
   | Geocoding for the proximity score factor                     | Needs a geocoding provider; the factor is weight-zero until then.                                                                 |
   | Consolidating the Resend call onto `http.ts`                 | Real cleanup, wrong PR.                                                                                                           |
 
+- **Real multi-currency** — currency is a per-org display setting today
+  (`Organization.settings.general.currency`); amounts are never
+  converted. True multi-currency needs a currency column on
+  Quote/Invoice/Payment plus rate handling at capture time.
 - **Clerk production instance** — running on dev-instance keys until a
   custom domain exists.
 - **Clerk webhook → Organization sync** — mirror org create/update/delete
