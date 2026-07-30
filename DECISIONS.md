@@ -127,6 +127,26 @@ Running log — newest last. Format: date, decision, why.
   Other status moves are manual on the board.
 - **Server-action body limit raised to 50 MB** (artwork uploads), file cap
   40 MB per upload.
+
+## 2026-07-30 — Phase 4
+
+- **Pricing engine is pure and shared** (lib/pricing): the quote builder
+  imports the same computeQuote for live preview that the server action
+  uses to persist, so preview and saved numbers can't diverge. Rules with
+  invalid configs are skipped AND surfaced — never silently ignored.
+- **Rule semantics:** first matching QUANTITY_TIER rule sets the unit
+  price (manual override skips tiers); STOCK surcharges add per unit;
+  FINISHING adds per-unit + flat; SETUP_FEE is quote-level;
+  RUSH_FEE (% and/or flat) applies only when the quote is rush. Tier
+  multiplier scales goods+rush; VAT (default 25%) applies after tier.
+- **Quote lifecycle:** DRAFT→SENT→ACCEPTED→CONVERTED (+REJECTED/EXPIRED,
+  EXPIRED can be re-SENT). Only drafts are editable. Accepted quotes can
+  convert to a draft invoice (50% deposit default, 30-day due) and/or spawn
+  a production job carrying the first line's specs.
+- **Rule configs edited as JSON** in Settings with per-type examples and
+  double validation (JSON parse + Zod per type). A friendlier form editor
+  is future work.
+- **Numbering series:** quotes #1001+, jobs #2001+, invoices #3001+.
 - All colors flow through the shadcn/Tailwind v4 tokens in
   `app/globals.css` — no hardcoded hex in components (the logo/gradient
   use explicit oklch because SVG/inline-gradients can't read CSS vars in

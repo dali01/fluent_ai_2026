@@ -87,6 +87,51 @@ async function main() {
     update: {},
   });
 
+  // Pricing rules (skip if any exist)
+  const existingRules = await t.pricingRule.count();
+  if (existingRules === 0) {
+    await t.pricingRule.createMany({
+      data: [
+        {
+          ...org,
+          name: "Flyer quantity breaks",
+          type: "QUANTITY_TIER",
+          config: {
+            tiers: [
+              { minQty: 0, unitPrice: 4 },
+              { minQty: 1000, unitPrice: 2.5 },
+              { minQty: 5000, unitPrice: 1.8 },
+            ],
+          },
+        },
+        {
+          ...org,
+          name: "Silk stock surcharge",
+          type: "STOCK",
+          config: { stock: "silk", surchargePerUnit: 0.3 },
+        },
+        {
+          ...org,
+          name: "Laminate finishing",
+          type: "FINISHING",
+          config: { finish: "laminate", perUnit: 0.5, flat: 200 },
+        },
+        {
+          ...org,
+          name: "Rush surcharge 25%",
+          type: "RUSH_FEE",
+          config: { percent: 25, flat: 0 },
+        },
+        {
+          ...org,
+          name: "Press setup",
+          type: "SETUP_FEE",
+          config: { flat: 500 },
+        },
+      ],
+    });
+  }
+
   // Companies (idempotent-ish: skip if any exist)
   const existingCompanies = await t.company.count();
   if (existingCompanies > 0) {
