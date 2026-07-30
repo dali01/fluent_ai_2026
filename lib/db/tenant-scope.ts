@@ -42,6 +42,7 @@ export const TENANT_MODELS = new Set([
   "ActivityLog",
   "AiTask",
   "LeadScore",
+  "SourceRun",
 ]);
 
 /** Models the tenant client refuses to touch (use dedicated lib helpers). */

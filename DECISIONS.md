@@ -197,6 +197,48 @@ Running log — newest last. Format: date, decision, why.
 - **Profitability = material margin** (invoice ex-VAT revenue, quote
   fallback; consumption × item unit cost). Incomplete costing is flagged
   rather than guessed. Labour costing is future work.
+
+## 2026-07-30 — Phase 8 (prospecting; design in docs/prospecting.md)
+
+- **Prospects extend `Lead`** (PROSPECT/DISQUALIFIED stages appended);
+  the kanban mitigation is `PROSPECT_STAGES` siblings + stage filters on
+  the pipeline/dashboard queries, guarded by a test. `moveLeadStage`
+  already validates against `LEAD_STAGES`, so cards can't be dragged
+  into PROSPECT.
+- **Dismissal is `DISQUALIFIED`, not `deletedAt`** — and the dedupe
+  index deliberately ignores `deletedAt`, or nightly runs would
+  resurrect everything users rejected. A deliberate deviation from the
+  archive convention.
+- **`SourceRun` holds the per-source watermark** (advances only on
+  success), run history and failure records; org _config_ stays in
+  `Organization.settings.prospecting` via `lib/db/org-settings.ts`.
+- **Two documented `getDb()` exceptions now exist:** portal-token lookup
+  (Phase 6) and `lib/jobs/orgs.ts` + `lib/db/org-settings.ts` (cron has
+  no Clerk session; Organization is refused by tenantDb).
+- **`CRON_SECRET` is now read** (first time since Phase 0):
+  constant-time compare, fails closed unset. Cron returns 404 (not 401)
+  on a bad secret, and 200-with-`ok:false` on failed runs so Vercel
+  Cron never retry-storms a bad upstream. **Warning: adding `"/api(.*)"`
+  to `isProtectedRoute` in proxy.ts would silently break cron.**
+- **Scoring is deterministic; Claude explains/drafts only** (per-trigger
+  weight tables, injected clock, factors sum to score). Outreach is
+  drafted and copied — never sent (no consent model; landing-page
+  promise "reviewed by you, never auto-sent").
+- **Anthropic SDK adopted** — deliberate deviation from the Resend
+  no-SDK precedent: `messages.parse` + `zodOutputFormat` beat
+  hand-rolled structured output. Opus 5: no sampling params, generous
+  max_tokens (thinking included), `output_config.effort`, refusal check.
+- **MCP source adapter is built but unwired**: HubSpot rejected on
+  product grounds (Fluent AI _is_ the CRM), enrichment vendors' MCP
+  servers are interactive-OAuth-only. Least-privilege toolset (default
+  disabled + allowlist); every tool-result row is zod-validated — data,
+  never instructions. Note: the MCP connector is unavailable on
+  Bedrock/Vertex; this project calls the Anthropic API directly.
+- **Places ToS made structural**: `place_id` is the durable key, cached
+  content refreshable (purge job on TODO); permit config REQUIRES
+  `termsUrl`. openFDA is public/unrestricted.
+- **`after()` rejected** for fire-and-forget enrichment — not a queue
+  (no retries, no visibility); jobs stay behind the documented interface.
 - All colors flow through the shadcn/Tailwind v4 tokens in
   `app/globals.css` — no hardcoded hex in components (the logo/gradient
   use explicit oklch because SVG/inline-gradients can't read CSS vars in

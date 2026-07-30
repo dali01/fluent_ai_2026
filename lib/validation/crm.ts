@@ -35,6 +35,8 @@ export const contactSchema = z.object({
 });
 export type ContactInput = z.infer<typeof contactSchema>;
 
+/** The six kanban stages. Deliberately does NOT include prospect stages —
+ * the board, the stage-move validator and the dashboard all key off this. */
 export const LEAD_STAGES = [
   "QUOTE_REQUESTED",
   "QUOTED",
@@ -43,6 +45,11 @@ export const LEAD_STAGES = [
   "DELIVERED",
   "REPEAT",
 ] as const;
+
+/** Sourced-prospect stages — never on the kanban (docs/prospecting.md §1a). */
+export const PROSPECT_STAGES = ["PROSPECT", "DISQUALIFIED"] as const;
+
+export const ALL_LEAD_STAGES = [...LEAD_STAGES, ...PROSPECT_STAGES] as const;
 
 export const leadSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),
