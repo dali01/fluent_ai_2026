@@ -141,6 +141,8 @@ model Contact {
   title          String?
   notes          String?
   tags           String[]  @default([])
+  /// Bearer secret for the client portal (regenerable, null = no access)
+  portalToken    String?   @unique
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
