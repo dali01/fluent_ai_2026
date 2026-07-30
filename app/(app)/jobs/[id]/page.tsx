@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { archiveJob, reorderJob } from "@/lib/actions/jobs";
+import { computeProfitability } from "@/lib/financials/profitability";
 import { requireOrg } from "@/lib/auth/require-org";
 import { tenantDb } from "@/lib/db/tenant";
 import type { PrepressResult } from "@/lib/prepress/checks";
@@ -50,8 +51,18 @@ export default async function JobDetailPage({
       },
       stockMovements: {
         where: { reason: "JOB_CONSUMPTION" },
-        select: { inventoryItemId: true },
+        select: {
+          inventoryItemId: true,
+          delta: true,
+          inventoryItem: { select: { costPerUnit: true } },
+        },
       },
+      invoices: {
+        where: { deletedAt: null, status: { not: "VOID" } },
+        select: { subtotal: true },
+        take: 1,
+      },
+      quote: { select: { id: true, quoteNumber: true, subtotal: true } },
       files: { orderBy: [{ fileName: "asc" }, { version: "desc" }] },
       proofs: {
         orderBy: { createdAt: "desc" },
@@ -79,6 +90,19 @@ export default async function JobDetailPage({
   const consumedItemIds = new Set(
     job.stockMovements.map((m) => m.inventoryItemId),
   );
+
+  const profit = computeProfitability({
+    invoiceSubtotal: job.invoices[0] ? Number(job.invoices[0].subtotal) : null,
+    quoteSubtotal: job.quote ? Number(job.quote.subtotal) : null,
+    consumption: job.stockMovements.map((m) => ({
+      quantity: Math.abs(Number(m.delta)),
+      costPerUnit: m.inventoryItem.costPerUnit
+        ? Number(m.inventoryItem.costPerUnit)
+        : null,
+    })),
+  });
+  const kr = (n: number) =>
+    `${n.toLocaleString("sv-SE", { maximumFractionDigits: 2 })} kr`;
 
   const defaultContactId = job.company.contacts[0]?.id ?? null;
 
@@ -184,6 +208,51 @@ export default async function JobDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Profitability (materials)</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 text-sm sm:grid-cols-4">
+          <div className="flex flex-col">
+            <span className="text-muted-foreground">
+              Revenue{" "}
+              {profit.revenueSource ? `(${profit.revenueSource}, ex VAT)` : ""}
+            </span>
+            <span className="font-mono text-lg font-semibold">
+              {profit.revenue != null ? kr(profit.revenue) : "—"}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-muted-foreground">
+              Material cost{profit.costComplete ? "" : " (incomplete)"}
+            </span>
+            <span className="font-mono text-lg font-semibold">
+              {kr(profit.materialCost)}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-muted-foreground">Margin</span>
+            <span
+              className={`font-mono text-lg font-semibold ${profit.margin != null && profit.margin < 0 ? "text-destructive" : ""}`}
+            >
+              {profit.margin != null ? kr(profit.margin) : "—"}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-muted-foreground">Margin %</span>
+            <span className="font-mono text-lg font-semibold">
+              {profit.marginPct != null ? `${profit.marginPct}%` : "—"}
+            </span>
+          </div>
+          {!profit.costComplete ? (
+            <p className="text-xs text-muted-foreground sm:col-span-4">
+              Some consumed materials have no unit cost — set costs in Inventory
+              for accurate margins. Labour costing is future work.
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <JobMaterialsCard
         jobId={job.id}
