@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { archiveJob, reorderJob } from "@/lib/actions/jobs";
 import { computeProfitability } from "@/lib/financials/profitability";
+import { estimateJobTurnaround } from "@/lib/production/report";
+import { meetsDueDate } from "@/lib/production/turnaround";
 import { requireOrg } from "@/lib/auth/require-org";
 import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
@@ -106,6 +108,7 @@ export default async function JobDetailPage({
   });
   const { currency } = await readGeneralConfig(orgId);
   const kr = (n: number) => formatMoney(n, currency);
+  const turnaround = await estimateJobTurnaround(orgId, id);
 
   const defaultContactId = job.company.contacts[0]?.id ?? null;
 
@@ -211,6 +214,51 @@ export default async function JobDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Turnaround is only shown when the press has capability data —
+          an invented date is worse than none, because it gets repeated
+          to the customer. */}
+      {turnaround ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Turnaround estimate</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 text-sm">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-mono text-lg font-semibold">
+                {turnaround.estimatedFinish.toLocaleString("sv-SE", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </span>
+              {job.dueDate ? (
+                <Badge
+                  variant={
+                    meetsDueDate(turnaround, job.dueDate)
+                      ? "secondary"
+                      : "destructive"
+                  }
+                >
+                  {meetsDueDate(turnaround, job.dueDate)
+                    ? "meets the due date"
+                    : "misses the due date"}
+                </Badge>
+              ) : null}
+              <span className="text-muted-foreground">
+                {turnaround.elapsedHours} h from now
+              </span>
+            </div>
+            <ul className="flex flex-col gap-0.5 text-muted-foreground">
+              {turnaround.factors.map((f) => (
+                <li key={f.factor}>
+                  <span className="font-mono">{Math.round(f.minutes)} min</span>{" "}
+                  {f.factor} — {f.detail}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

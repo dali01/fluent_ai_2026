@@ -6,6 +6,8 @@ import {
 import { RecomputeButton } from "@/components/insights/recompute-button";
 import { requireOrg } from "@/lib/auth/require-org";
 import { tenantDb } from "@/lib/db/tenant";
+import { buildProductionReport } from "@/lib/production/report";
+import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Insights" };
 
@@ -15,12 +17,15 @@ export default async function InsightsPage() {
   const { orgId } = await requireOrg();
   const db = tenantDb(orgId);
 
-  const scores = await db.leadScore.findMany({
-    where: { company: { deletedAt: null } },
-    include: { company: { select: { id: true, name: true } } },
-    orderBy: { computedAt: "desc" },
-    take: 500,
-  });
+  const [scores, production] = await Promise.all([
+    db.leadScore.findMany({
+      where: { company: { deletedAt: null } },
+      include: { company: { select: { id: true, name: true } } },
+      orderBy: { computedAt: "desc" },
+      take: 500,
+    }),
+    buildProductionReport(orgId),
+  ]);
 
   const toRow = (
     s: (typeof scores)[number],
@@ -61,6 +66,65 @@ export default async function InsightsPage() {
         </div>
         <RecomputeButton />
       </div>
+
+      {/* Production analytics — measured from JobStatusEvent, so it
+          fills in as work flows through the board rather than being
+          reconstructed from prose. */}
+      <section className="flex flex-col gap-3">
+        <h2 className="font-heading text-lg font-semibold">Production flow</h2>
+        <div className="rounded-xl border bg-card p-4 text-sm">
+          <p className="text-muted-foreground">{production.cycle.rationale}</p>
+          <div className="mt-3 flex flex-wrap gap-6">
+            {production.cycle.medianTotalHours !== null ? (
+              <span>
+                <span className="font-mono text-lg font-semibold">
+                  {production.cycle.medianTotalHours} h
+                </span>{" "}
+                <span className="text-muted-foreground">
+                  median end-to-end ({production.cycle.completedJobs} jobs)
+                </span>
+              </span>
+            ) : null}
+            {production.onTime ? (
+              <span>
+                <span className="font-mono text-lg font-semibold">
+                  {Math.round(production.onTime.rate * 100)}%
+                </span>{" "}
+                <span className="text-muted-foreground">
+                  on time ({production.onTime.sample} delivered)
+                </span>
+              </span>
+            ) : (
+              <span className="text-muted-foreground">
+                On-time rate needs jobs with both a due date and a delivery.
+              </span>
+            )}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {production.cycle.stages.map((stage) => (
+              <span
+                key={stage.stage}
+                className={cn(
+                  "rounded-lg border px-2.5 py-1.5 text-xs",
+                  production.cycle.bottleneck?.stage === stage.stage &&
+                    "border-chart-3/50 bg-chart-3/10",
+                )}
+              >
+                <span className="font-medium">{stage.stage.toLowerCase()}</span>{" "}
+                <span className="font-mono">
+                  {stage.medianHours !== null ? `${stage.medianHours} h` : "—"}
+                </span>
+                {stage.openNow > 0 ? (
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {stage.openNow} now
+                  </span>
+                ) : null}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="font-heading text-lg font-semibold">

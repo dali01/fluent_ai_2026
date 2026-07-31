@@ -23,6 +23,7 @@ if (process.env.USE_NEON && process.env.NEON_DATABASE_URL) {
 }
 
 import type { Currency } from "../lib/format/money";
+import type { JobStatus } from "../lib/generated/prisma/enums";
 
 const ORG_ID = process.env.SEED_ORG_ID ?? "org_demo_fluent";
 const MARKET = (process.env.SEED_MARKET ?? "se") as "se" | "us";
@@ -562,11 +563,33 @@ async function main() {
   const newCustomer = await company(M.newCustomer);
 
   // ── Presses / vendors / inventory ──────────────────────────────
+  // Capability figures are what make turnaround estimates possible —
+  // realistic values for a B2 offset press and a production digital.
   const sm74 = await t.press.create({
-    data: { ...org, name: "Heidelberg SM 74", kind: "offset" },
+    data: {
+      ...org,
+      name: "Heidelberg SM 74",
+      kind: "offset",
+      sheetWidthMm: 740,
+      sheetHeightMm: 1040,
+      sheetsPerHour: 13000,
+      makereadyMinutes: 45,
+      makereadySheets: 150,
+      hourlyRateCents: 95000,
+    },
   });
   const iridesse = await t.press.create({
-    data: { ...org, name: "Xerox Iridesse", kind: "digital" },
+    data: {
+      ...org,
+      name: "Xerox Iridesse",
+      kind: "digital",
+      sheetWidthMm: 330,
+      sheetHeightMm: 660,
+      sheetsPerHour: 3600,
+      makereadyMinutes: 10,
+      makereadySheets: 10,
+      hourlyRateCents: 42000,
+    },
   });
 
   for (const v of M.vendors) {
@@ -680,7 +703,20 @@ async function main() {
     pressId?: string | null;
   }) {
     jobNo += 1;
-    return t.job.create({
+    const createdAt = daysAgo(data.createdDaysAgo);
+    const dueDate =
+      data.status === "DONE"
+        ? daysAgo(data.createdDaysAgo - 10)
+        : daysAhead(data.dueInDays ?? 10);
+    // Completed demo jobs get a plausible delivery: mostly on time, but
+    // every fourth one late, so the on-time rate is a real number
+    // rather than a flat 100%.
+    const deliveredAt =
+      data.status === "DONE"
+        ? new Date(dueDate.getTime() + (jobNo % 4 === 0 ? 2 : -1) * 86_400_000)
+        : null;
+
+    const created = await t.job.create({
       data: {
         ...org,
         jobNumber: jobNo,
@@ -694,14 +730,39 @@ async function main() {
         finish: data.finish,
         rush: data.rush ?? false,
         bleedMm: 3,
-        dueDate:
-          data.status === "DONE"
-            ? daysAgo(data.createdDaysAgo - 10)
-            : daysAhead(data.dueInDays ?? 10),
-        createdAt: daysAgo(data.createdDaysAgo),
+        dueDate,
+        deliveredAt,
+        createdAt,
         pressId: data.pressId ?? undefined,
       },
     });
+
+    // Synthetic status history so /insights has flow data to measure.
+    // Prepress is deliberately the slow stage — it usually is.
+    const path: Array<{ to: JobStatus; hours: number }> = [
+      { to: "DESIGN", hours: 0 },
+      { to: "PROOFING", hours: 6 },
+      { to: "PREPRESS", hours: 20 },
+      { to: "PRINTING", hours: 44 },
+      { to: "FINISHING", hours: 52 },
+      { to: "SHIPPING", hours: 58 },
+      { to: "DONE", hours: 64 },
+    ];
+    const target = path.findIndex((p) => p.to === data.status);
+    let previous: JobStatus | null = null;
+    for (const step of path.slice(0, target + 1)) {
+      await t.jobStatusEvent.create({
+        data: {
+          ...org,
+          jobId: created.id,
+          fromStatus: previous,
+          toStatus: step.to,
+          at: new Date(createdAt.getTime() + step.hours * 3_600_000),
+        },
+      });
+      previous = step.to;
+    }
+    return created;
   }
 
   // monthly cadence, last one 50 days ago → reorder due
