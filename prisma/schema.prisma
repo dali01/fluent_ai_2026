@@ -565,6 +565,12 @@ model JobMaterial {
   jobId           String
   inventoryItemId String
   quantityPlanned Decimal  @db.Decimal(12, 3)
+  /// What was really used, when someone records it. Null means nobody
+  /// did — planned-vs-actual variance is only honest where this is set,
+  /// which is why waste stays "estimated" until it fills in.
+  quantityActual  Decimal? @db.Decimal(12, 3)
+  /// Sheets spoiled on the run, recorded separately from consumption
+  quantitySpoiled Decimal? @db.Decimal(12, 3)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -625,6 +631,9 @@ model Press {
   makereadySheets  Int?
   /// machine cost for margin work beyond material cost
   hourlyRateCents  Int?
+  /// run spoilage as a percent of the run — the configured estimate,
+  /// used until enough recorded actuals exist to measure it instead
+  spoilagePercent  Decimal?  @db.Decimal(5, 2)
   notes          String?
   active         Boolean   @default(true)
   createdAt      DateTime  @default(now())

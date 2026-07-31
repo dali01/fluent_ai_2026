@@ -60,9 +60,7 @@ export function isArcGisUrl(url: string): boolean {
  */
 export function parseFeedDate(value: string): Date | undefined {
   const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(value);
-  const date = new Date(
-    hasZone || !value.includes("T") ? value : `${value}Z`,
-  );
+  const date = new Date(hasZone || !value.includes("T") ? value : `${value}Z`);
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
@@ -118,7 +116,9 @@ export function parsePermitResponse(
           ? ` — ${str(row, config.categoryField)}`
           : ""
       }`,
-      category: config.categoryField ? str(row, config.categoryField) : undefined,
+      category: config.categoryField
+        ? str(row, config.categoryField)
+        : undefined,
       triggeredAt,
       address: {
         line1: addressParts.length > 0 ? addressParts.join(" ") : undefined,
@@ -246,9 +246,7 @@ export function createPermitSource(
       return {
         prospects: prospects.slice(0, ctx.limit),
         cursor:
-          !truncated && newest
-            ? newest.toISOString().slice(0, 19)
-            : undefined,
+          !truncated && newest ? newest.toISOString().slice(0, 19) : undefined,
         shared: false, // per-org feed
         warnings,
         truncated,

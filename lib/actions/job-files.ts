@@ -2,10 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { isAiEnabled } from "@/lib/ai/client";
-import {
-  explainPrepress,
-  type PrepressExplanation,
-} from "@/lib/ai/prepress";
+import { explainPrepress, type PrepressExplanation } from "@/lib/ai/prepress";
 import { requireOrg } from "@/lib/auth/require-org";
 import { tenantDb } from "@/lib/db/tenant";
 import { notifyProofRequest } from "@/lib/notifications/notify";
@@ -143,8 +140,7 @@ export async function sendProof(
 export async function explainJobFilePrepress(
   jobFileId: string,
 ): Promise<
-  | { ok: true; explanation: PrepressExplanation }
-  | { ok: false; error: string }
+  { ok: true; explanation: PrepressExplanation } | { ok: false; error: string }
 > {
   const { orgId } = await requireOrg();
   if (!isAiEnabled()) {

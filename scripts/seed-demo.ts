@@ -576,6 +576,7 @@ async function main() {
       makereadyMinutes: 45,
       makereadySheets: 150,
       hourlyRateCents: 95000,
+      spoilagePercent: 2.5,
     },
   });
   const iridesse = await t.press.create({
@@ -589,6 +590,7 @@ async function main() {
       makereadyMinutes: 10,
       makereadySheets: 10,
       hourlyRateCents: 42000,
+      spoilagePercent: 0.8,
     },
   });
 

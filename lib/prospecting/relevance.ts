@@ -8,8 +8,7 @@ import type { DiscoveredProspect } from "./sources/types";
  */
 
 export type RelevanceVerdict =
-  | { relevant: true; reason: string }
-  | { relevant: false; reason: string };
+  { relevant: true; reason: string } | { relevant: false; reason: string };
 
 /**
  * The ONE dispatch point. Exhaustive switch: a new RelevanceKind is a
@@ -131,7 +130,8 @@ export function isRelevantOsm(prospect: DiscoveredProspect): RelevanceVerdict {
   }
   const hasAddress = Boolean(prospect.address?.line1);
   const hasCoords =
-    typeof prospect.raw.lat === "number" && typeof prospect.raw.lon === "number";
+    typeof prospect.raw.lat === "number" &&
+    typeof prospect.raw.lon === "number";
   if (!hasAddress && !hasCoords) {
     return { relevant: false, reason: "no address and no coordinates" };
   }
@@ -243,7 +243,10 @@ export function isRelevantFiling(signal: FilingSignal): RelevanceVerdict {
   const form = signal.formType?.toLowerCase().trim();
   if (!form) return { relevant: false, reason: "missing form type" };
   if (!FILING_FORM_ALLOWLIST.includes(form)) {
-    return { relevant: false, reason: `form ${signal.formType} implies no print` };
+    return {
+      relevant: false,
+      reason: `form ${signal.formType} implies no print`,
+    };
   }
   return { relevant: true, reason: `print-bearing filing (${form})` };
 }

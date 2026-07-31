@@ -27,12 +27,9 @@ export type RfqDraft = {
 };
 
 export type RfqResult =
-  | { ok: true; draft: RfqDraft }
-  | { ok: false; error: string };
+  { ok: true; draft: RfqDraft } | { ok: false; error: string };
 
-export async function draftQuoteFromEnquiry(
-  text: string,
-): Promise<RfqResult> {
+export async function draftQuoteFromEnquiry(text: string): Promise<RfqResult> {
   const { orgId } = await requireOrg();
   if (!isAiEnabled()) {
     return { ok: false, error: "AI is not configured (ANTHROPIC_API_KEY)" };
@@ -71,7 +68,8 @@ export async function draftQuoteFromEnquiry(
   const matched = extraction.companyName
     ? (companies.find(
         (c) =>
-          c.name.toLowerCase() === extraction!.companyName!.trim().toLowerCase(),
+          c.name.toLowerCase() ===
+          extraction!.companyName!.trim().toLowerCase(),
       ) ?? null)
     : null;
 

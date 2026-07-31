@@ -92,9 +92,9 @@ export function PortalChat({ token }: { token: string }) {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Ask about the status, contents or pricing of your quotes and
-            orders — answers come from your live order data. For changes to an
-            order, contact us directly.
+            Ask about the status, contents or pricing of your quotes and orders
+            — answers come from your live order data. For changes to an order,
+            contact us directly.
           </p>
         )}
         <form
