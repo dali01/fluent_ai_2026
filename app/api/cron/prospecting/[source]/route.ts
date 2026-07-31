@@ -7,14 +7,20 @@ import { isSourceId } from "@/lib/prospecting/sources";
 import type { SourceResult } from "@/lib/prospecting/sources/types";
 
 /**
- * One route, three schedules (vercel.json). Two non-obvious choices
- * (docs/prospecting.md §8):
+ * One route, one schedule per source (vercel.json). Three non-obvious
+ * choices (docs/prospecting.md §8):
  *  - 404 (not 401) on a bad secret — hide existence, matching the files
  *    route.
  *  - HTTP 200 with { ok: false } on a failed run — a 5xx makes Vercel
  *    Cron retry, turning a bad upstream into a retry storm. Visibility
  *    lives in SourceRun and the ActivityLog, not the status code.
+ *  - a long maxDuration: a run fans out across every org and some
+ *    upstreams (Overpass) queue requests for tens of seconds. The
+ *    default 15s budget killed the OSM agent's socket in production
+ *    while it worked locally.
  */
+export const maxDuration = 300;
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ source: string }> },
