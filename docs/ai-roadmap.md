@@ -1,9 +1,9 @@
 # AI roadmap — proposal
 
-**Status: partly built.** Steps 1–5 of §6 shipped on 2026-07-31 —
-the schema foundation, RFQ intake, the AI spend panel, the weekly owner
-briefing, turnaround promises and bottleneck analytics. What remains is
-Tier 2's batching and waste, plus Tier 3. Each section below is marked.
+**Status: Tier 1 and Tier 2 are built.** All six steps of §6 shipped on
+2026-07-31 — the schema foundation, RFQ intake, the AI spend panel, the
+weekly owner briefing, turnaround promises, bottleneck analytics, waste
+estimates and gang-run batching. Only Tier 3 remains.
 
 The document is kept as written so the reasoning stays reviewable: the
 blockers in §1 are what made the ordering what it is.
@@ -128,8 +128,7 @@ everything else legible.
 
 ## 3. Tier 2 — the print-native moat (needs the Tier-1 schema work)
 
-> **2.2 turnaround and 2.4 bottleneck analytics shipped; 2.1 batching
-> and 2.3 waste remain.**
+> **All four shipped.**
 
 These are the reserved kinds, and they are what a generic CRM cannot do.
 
@@ -224,10 +223,12 @@ Not "later" — rejected on principle, so they don't get proposed again:
    guess when a press has no capability data
 5. ~~**Bottleneck analytics** (2.4)~~ **done** — medians suppressed below
    three samples
-6. **Batching** (2.1) and **waste** (2.3) — highest effort, still to do.
-   Waste additionally needs honest actuals (blocker row 3): until job
-   completion records a real quantity and spoilage, any waste figure is
-   an estimate from history and must be labelled as one.
+6. ~~**Batching** (2.1) and **waste** (2.3)~~ **done** — batching claims
+   only consolidated setup and refuses to nest sheets; waste is modelled
+   from configured press figures and labelled "estimated", with a
+   separate measurement that only counts recorded actuals. Blocker row 3
+   is now addressable rather than fixed: recording actuals is optional,
+   so the measurement fills in only for shops that use it.
 
 Each step is independently shippable and independently useful, which is
 the same sequencing rule the prospecting work followed.
