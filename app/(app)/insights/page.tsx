@@ -118,6 +118,9 @@ export default async function InsightsPage() {
                   <span className="text-muted-foreground">
                     {" "}
                     · {stage.openNow} now
+                    {stage.oldestOpenHours !== null
+                      ? `, oldest ${Math.round(stage.oldestOpenHours)} h`
+                      : ""}
                   </span>
                 ) : null}
               </span>

@@ -90,6 +90,14 @@ describe("analyzeCycleTime", () => {
     expect(prepress.openNow).toBe(1);
     expect(prepress.samples).toBe(4); // unchanged — the visit isn't over
     expect(prepress.medianHours).toBe(24);
+    // Entered 2026-07-30 08:00, "now" is 2026-07-31 12:00 → 28 h stuck.
+    // A job stuck for days is exactly what a median hides.
+    expect(prepress.oldestOpenHours).toBe(28);
+  });
+
+  it("reports no open age for a stage nothing is sitting in", () => {
+    const prepress = report.stages.find((s) => s.stage === "PREPRESS")!;
+    expect(prepress.oldestOpenHours).toBeNull();
   });
 
   it("reports p90 alongside the median", () => {

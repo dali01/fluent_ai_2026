@@ -25,6 +25,8 @@ export type StageStats = {
   p90Hours: number | null;
   /** jobs sitting in this stage right now */
   openNow: number;
+  /** how long the longest-waiting open job has been here; null when none */
+  oldestOpenHours: number | null;
 };
 
 export type CycleTimeReport = {
@@ -77,6 +79,7 @@ export function analyzeCycleTime(
 
   const dwellByStage = new Map<string, number[]>();
   const openByStage = new Map<string, number>();
+  const openAgeByStage = new Map<string, number>();
   const totals: number[] = [];
 
   for (const list of byJob.values()) {
@@ -95,6 +98,12 @@ export function analyzeCycleTime(
         openByStage.set(
           entered.toStatus,
           (openByStage.get(entered.toStatus) ?? 0) + 1,
+        );
+        // A job stuck for days is the signal a median hides
+        const ageHours = (now.getTime() - entered.at.getTime()) / HOUR;
+        openAgeByStage.set(
+          entered.toStatus,
+          Math.max(openAgeByStage.get(entered.toStatus) ?? 0, ageHours),
         );
       }
     }
@@ -116,6 +125,9 @@ export function analyzeCycleTime(
         p90Hours:
           samples.length >= MIN_SAMPLES ? percentile(samples, 90) : null,
         openNow: openByStage.get(stage) ?? 0,
+        oldestOpenHours: openAgeByStage.has(stage)
+          ? Math.round(openAgeByStage.get(stage)! * 10) / 10
+          : null,
       };
     },
   );
