@@ -12,11 +12,15 @@ import { requireOrg } from "@/lib/auth/require-org";
 import { tenantDb } from "@/lib/db/tenant";
 import {
   getSource,
+  sourceConfigsFrom,
   SOURCE_ENUM,
   SOURCE_IDS,
   SOURCE_META,
 } from "@/lib/prospecting/sources";
-import { prospectFilterSchema } from "@/lib/validation/prospecting";
+import {
+  prospectFilterSchema,
+  PROSPECT_SOURCE_VALUES,
+} from "@/lib/validation/prospecting";
 
 export const metadata = { title: "Prospects" };
 
@@ -36,7 +40,8 @@ export default async function ProspectsPage({
   const params = await searchParams;
   const filter = prospectFilterSchema.parse({
     source:
-      params.source && ["FDA", "PLACES", "PERMIT"].includes(params.source)
+      params.source &&
+      (PROSPECT_SOURCE_VALUES as readonly string[]).includes(params.source)
         ? params.source
         : "all",
   });
@@ -63,17 +68,29 @@ export default async function ProspectsPage({
   ]);
 
   // Per-agent state: switched on for this org, and actually runnable
+  const configs = sourceConfigsFrom(config);
   const agentState = SOURCE_IDS.map((id) => ({
     id,
     label: SOURCE_META[id].label,
     enumValue: SOURCE_ENUM[id],
     enabledForOrg: config.sources[id],
-    unavailableReason: getSource(id, {
-      queries: config.placesQueries,
-      center: config.market?.center,
-      radiusMeters: config.market?.radiusMeters,
-    }).unavailableReason(),
+    unavailableReason: getSource(id, configs).unavailableReason(),
   }));
+
+  // ODbL and similar licences require attribution wherever the data shows
+  const attributions = [
+    ...new Set(
+      prospects
+        .map(
+          (p) =>
+            SOURCE_IDS.find((id) => SOURCE_ENUM[id] === p.prospectSource) ??
+            null,
+        )
+        .filter((id): id is (typeof SOURCE_IDS)[number] => id !== null)
+        .map((id) => SOURCE_META[id].attribution)
+        .filter((a): a is string => Boolean(a)),
+    ),
+  ];
 
   const rows: ProspectRowData[] = prospects.map((p) => ({
     id: p.id,
@@ -204,6 +221,13 @@ export default async function ProspectsPage({
           ))}
         </div>
       )}
+
+      {/* Licence attribution is a condition of use, not a courtesy */}
+      {attributions.length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Business data: {attributions.join(" · ")}
+        </p>
+      ) : null}
     </div>
   );
 }

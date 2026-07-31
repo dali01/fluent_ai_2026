@@ -25,11 +25,18 @@ four specific jobs, each grounded in one architectural rule:
 Fluent AI watches public signals for businesses that are about to need
 print, then does the qualifying work before a human looks:
 
-| Source                     | Signal                                           | Why a printer cares                                                                      |
-| -------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| **openFDA** (free, no key) | A drug application clears approval               | Cartons, package inserts, blister foil and pharmacy labels — procurement starts in weeks |
-| **Google Places**          | Established local businesses you've never quoted | Category-specific openings in your own city                                              |
-| **Permit/licence feeds**   | A business just opened or got licensed           | Signage, cards, menus, window graphics — needed immediately                              |
+| Source                             | Signal                                           | Why a printer cares                                                                       |
+| ---------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| **OpenStreetMap** (free, no key)   | Businesses newly mapped near you                 | Local discovery with no API bill — the keyless answer to "who's nearby I've never quoted" |
+| **openFDA drugs** (free, no key)   | A drug application clears approval               | Cartons, package inserts, blister foil and pharmacy labels — procurement starts in weeks  |
+| **openFDA devices** (free, no key) | A 510(k) medical device is cleared               | Instructions-for-use booklets, cartons, sterile-barrier labels — compliance-grade work    |
+| **Permit / licence feeds** (free)  | A permit is issued in your city                  | Signage, cards, menus, window graphics — needed immediately                               |
+| **Google Places** (paid key)       | Established local businesses you've never quoted | Optional: broader coverage than OSM where the budget exists                               |
+
+**Four of the five need no API key at all.** Places is the only paid
+source, and OpenStreetMap covers the same ground for free; the permit
+adapter speaks both Socrata and ArcGIS, so adding a city is a
+configuration block, not code.
 
 Each discovered lead runs a deterministic gauntlet before it costs you
 anything:

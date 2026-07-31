@@ -4,8 +4,9 @@ import { classify, type DedupeIndex } from "./dedupe";
 import { enrichSafe } from "./enrichment";
 import { enrichmentGate } from "./gate";
 import { locationKey, nameKey, normalizeBusinessName } from "./normalize";
-import { isRelevantFda, isRelevantLocal } from "./relevance";
+import { screenProspect } from "./relevance";
 import { scoreProspect, type ProspectSourceKind } from "./scoring";
+import { SOURCE_META, type SourceId } from "./sources/meta";
 import type { DiscoveredProspect } from "./sources/types";
 
 /**
@@ -20,12 +21,6 @@ export type IngestCounters = {
   duplicates: number;
   screenedOut: number;
   enriched: number;
-};
-
-const SOURCE_TO_ENUM: Record<string, ProspectSourceKind> = {
-  fda: "FDA",
-  places: "PLACES",
-  permit: "PERMIT",
 };
 
 async function loadDedupeIndex(
@@ -64,13 +59,16 @@ async function loadDedupeIndex(
 
 export async function ingestBatch(
   orgId: string,
-  sourceId: string,
+  sourceId: SourceId,
   prospects: DiscoveredProspect[],
   config: ProspectingConfig,
   now: Date,
 ): Promise<IngestCounters> {
-  const source = SOURCE_TO_ENUM[sourceId] ?? "MANUAL";
-  const mode = source === "FDA" ? "name" : "location";
+  // Enum, dedupe mode and relevance screen all come from the one
+  // exhaustive table — no per-lookup fallbacks to guess wrong with.
+  const meta = SOURCE_META[sourceId];
+  const source: ProspectSourceKind = meta.enumValue;
+  const mode = meta.dedupeMode;
   const db = tenantDb(orgId);
   const index = await loadDedupeIndex(orgId, source);
   const counters: IngestCounters = {
@@ -88,16 +86,7 @@ export async function ingestBatch(
         continue;
       }
 
-      // Relevance
-      const relevance =
-        source === "FDA"
-          ? isRelevantFda({
-              dosageForm: prospect.raw.dosageForm as string | undefined,
-              marketingStatus: prospect.raw.marketingStatus as
-                string | undefined,
-              submissionType: prospect.raw.submissionType as string | undefined,
-            })
-          : isRelevantLocal(prospect);
+      const relevance = screenProspect(meta.relevance, prospect);
 
       const existingCustomer = verdict.kind === "existing-customer";
       if (!relevance.relevant && !existingCustomer) {

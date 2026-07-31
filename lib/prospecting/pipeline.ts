@@ -1,7 +1,12 @@
 import { readProspectingConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
 import { ingestBatch } from "./ingest";
-import { getSource, SOURCE_ENUM, type SourceId } from "./sources";
+import {
+  getSource,
+  SOURCE_ENUM,
+  sourceConfigsFrom,
+  type SourceId,
+} from "./sources";
 import type { SourceResult } from "./sources/types";
 
 /**
@@ -36,11 +41,7 @@ export async function runProspectSource(
   const sourceEnum = SOURCE_ENUM[sourceId];
   const config = await readProspectingConfig(orgId);
 
-  const source = getSource(sourceId, {
-    queries: config.placesQueries,
-    center: config.market?.center,
-    radiusMeters: config.market?.radiusMeters,
-  });
+  const source = getSource(sourceId, sourceConfigsFrom(config));
 
   // Three independent gates, each with its own reason: the org-wide
   // switch, this org's choice of agents, and the connector's own

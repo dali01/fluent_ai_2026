@@ -56,13 +56,23 @@ export async function writeGeneralConfig(
  * picks the agents. Defaults mirror SOURCE_META.defaultEnabled — permit
  * stays off because its connector is still a stub.
  */
+const SOURCE_TOGGLE_DEFAULTS = {
+  fda: true,
+  places: true,
+  permit: false,
+  osm: true,
+  fda_device: true,
+} as const;
+
 export const sourceTogglesSchema = z
   .object({
     fda: z.boolean().default(true),
     places: z.boolean().default(true),
     permit: z.boolean().default(false),
+    osm: z.boolean().default(true),
+    fda_device: z.boolean().default(true),
   })
-  .default({ fda: true, places: true, permit: false });
+  .default(SOURCE_TOGGLE_DEFAULTS);
 
 export type SourceToggles = z.infer<typeof sourceTogglesSchema>;
 
@@ -79,6 +89,16 @@ export const prospectingConfigSchema = z
       })
       .optional(),
     placesQueries: z.array(z.string()).default([]),
+    /** OSM tag selectors, e.g. "shop=bakery" (Overpass agent) */
+    osmCategories: z
+      .array(z.string())
+      .default([
+        "shop=bakery",
+        "amenity=restaurant",
+        "amenity=cafe",
+        "shop=hairdresser",
+        "shop=florist",
+      ]),
     permitSource: z
       .object({
         url: z.string(),
@@ -112,8 +132,9 @@ export const prospectingConfigSchema = z
   })
   .default({
     enabled: false,
-    sources: { fda: true, places: true, permit: false },
+    sources: SOURCE_TOGGLE_DEFAULTS,
     placesQueries: [],
+    osmCategories: [],
     fda: { enabled: true, dosageFormAllowlist: [], applicationTypes: [] },
     enrichment: { minScore: 60, maxPerRun: 10 },
   });

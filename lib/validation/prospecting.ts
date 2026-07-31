@@ -5,7 +5,15 @@ export const PROSPECT_SOURCE_FILTERS = [
   "FDA",
   "PLACES",
   "PERMIT",
+  "OSM",
+  "FDA_DEVICE",
 ] as const;
+
+/** Filter values excluding "all" — used to validate ?source= */
+export const PROSPECT_SOURCE_VALUES = PROSPECT_SOURCE_FILTERS.filter(
+  (f): f is Exclude<(typeof PROSPECT_SOURCE_FILTERS)[number], "all"> =>
+    f !== "all",
+);
 
 export const prospectFilterSchema = z.object({
   source: z.enum(PROSPECT_SOURCE_FILTERS).default("all"),

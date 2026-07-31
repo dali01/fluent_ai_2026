@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { prospectingConfigSchema } from "@/lib/db/org-settings";
 import { createPlacesSource } from "@/lib/prospecting/sources/places";
-import { permitSource } from "@/lib/prospecting/sources/permit";
+import { createPermitSource } from "@/lib/prospecting/sources/permit";
+import { createOsmSource } from "@/lib/prospecting/sources/osm";
 import { openFdaSource } from "@/lib/prospecting/sources/openfda";
+import { openFdaDeviceSource } from "@/lib/prospecting/sources/openfda-device";
 import { SOURCE_IDS, SOURCE_META } from "@/lib/prospecting/sources/meta";
 
 const ORIGINAL = { ...process.env };
@@ -37,17 +39,58 @@ describe("source availability", () => {
     expect(source.unavailableReason()).toBeUndefined();
   });
 
-  it("permit reports its missing feed", () => {
-    delete process.env.PERMIT_FEED_URL;
-    expect(permitSource.unavailableReason()).toContain("PERMIT_FEED_URL");
+  it("openFDA devices need no key either", () => {
+    expect(openFdaDeviceSource.isConfigured()).toBe(true);
+    expect(openFdaDeviceSource.unavailableReason()).toBeUndefined();
+  });
+
+  it("permit points at the org setting, not an env var", () => {
+    // The feed is per-org config now; there is no global PERMIT_FEED_URL
+    expect(createPermitSource(undefined).unavailableReason()).toContain(
+      "no permit feed configured",
+    );
+  });
+
+  it("permit refuses a feed with no termsUrl", () => {
+    const source = createPermitSource({
+      url: "https://data.example.gov/resource/abc.json",
+      termsUrl: "",
+      recordIdField: "id",
+      nameField: "name",
+      addressFields: [],
+    });
+    expect(source.unavailableReason()).toContain("termsUrl");
+  });
+
+  it("OSM needs a market centre and categories, but never a key", () => {
+    expect(
+      createOsmSource({ categories: ["shop=bakery"] }).unavailableReason(),
+    ).toContain("market centre");
+    expect(
+      createOsmSource({
+        categories: [],
+        center: { lat: 57.78, lng: 14.16 },
+      }).unavailableReason(),
+    ).toContain("categories");
+    expect(
+      createOsmSource({
+        categories: ["shop=bakery"],
+        center: { lat: 57.78, lng: 14.16 },
+      }).isConfigured(),
+    ).toBe(true);
   });
 
   it("isConfigured() and unavailableReason() never disagree", () => {
     delete process.env.GOOGLE_PLACES_API_KEY;
-    delete process.env.PERMIT_FEED_URL;
     for (const source of [
       openFdaSource,
-      permitSource,
+      openFdaDeviceSource,
+      createPermitSource(undefined),
+      createOsmSource({ categories: [] }),
+      createOsmSource({
+        categories: ["shop=bakery"],
+        center: { lat: 57.78, lng: 14.16 },
+      }),
       createPlacesSource({ queries: [] }),
       createPlacesSource({ queries: ["x"] }),
     ]) {
@@ -72,7 +115,10 @@ describe("per-org source toggles", () => {
       enabled: true,
       sources: { fda: false, places: true, permit: true },
     });
-    expect(config.sources).toEqual({ fda: false, places: true, permit: true });
+    // Asserted per-key so adding an agent doesn't break this test
+    expect(config.sources.fda).toBe(false);
+    expect(config.sources.places).toBe(true);
+    expect(config.sources.permit).toBe(true);
   });
 
   it("fills partial toggle objects from defaults", () => {
