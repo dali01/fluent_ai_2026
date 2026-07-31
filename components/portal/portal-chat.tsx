@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { MessageCircle, Send } from "lucide-react";
+import { FileText, MessageCircle, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ type Turn = { role: "user" | "assistant"; content: string };
 export function PortalChat({ token }: { token: string }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
+  const [requested, setRequested] = useState(false);
   const [pending, startTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -116,6 +117,45 @@ export function PortalChat({ token }: { token: string }) {
             <span className="sr-only">Send</span>
           </Button>
         </form>
+
+        {/* Separate from the chat on purpose: the assistant only
+            explains, so asking for something new is an explicit act. */}
+        <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending || input.trim().length < 10}
+            onClick={() =>
+              startTransition(async () => {
+                const res = await fetch("/api/portal/request-quote", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ token, message: input.trim() }),
+                });
+                if (res.ok) {
+                  setInput("");
+                  setRequested(true);
+                } else {
+                  setTurns((t) => [
+                    ...t,
+                    {
+                      role: "assistant",
+                      content:
+                        "Sorry — I couldn't pass that on. Please contact us directly.",
+                    },
+                  ]);
+                }
+              })
+            }
+          >
+            <FileText aria-hidden /> Request a quote for this
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {requested
+              ? "Sent — the shop will price it and come back to you."
+              : "Describe what you need above, then send it over as a quote request."}
+          </span>
+        </div>
       </CardContent>
     </Card>
   );
