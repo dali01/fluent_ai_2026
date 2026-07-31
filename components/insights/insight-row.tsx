@@ -80,8 +80,8 @@ export function InsightRow({ insight }: { insight: InsightRowData }) {
                 {explanation.suggestedAction}
               </p>
               <p className="text-muted-foreground">
-                <span className="font-medium text-foreground">Opener:</span>{" "}
-                “{explanation.talkingPoint}”
+                <span className="font-medium text-foreground">Opener:</span> “
+                {explanation.talkingPoint}”
               </p>
             </div>
           ) : null}

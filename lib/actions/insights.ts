@@ -2,10 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { isAiEnabled } from "@/lib/ai/client";
-import {
-  explainInsight,
-  type InsightExplanation,
-} from "@/lib/ai/insights";
+import { explainInsight, type InsightExplanation } from "@/lib/ai/insights";
 import { requireOrg } from "@/lib/auth/require-org";
 import { tenantDb } from "@/lib/db/tenant";
 import type { ChurnInsight } from "@/lib/insights/churn";

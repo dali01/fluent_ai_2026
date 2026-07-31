@@ -29,7 +29,9 @@ const lineSchema = z.object({
   stock: z
     .string()
     .nullable()
-    .describe("Paper/substrate as described, e.g. '170gsm silk'; null if not stated"),
+    .describe(
+      "Paper/substrate as described, e.g. '170gsm silk'; null if not stated",
+    ),
   colorMode: z.enum(COLOR_MODES).nullable(),
   finish: z
     .string()

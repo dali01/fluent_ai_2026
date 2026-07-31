@@ -73,8 +73,8 @@ export function RfqIntake({ currency }: { currency: Currency }) {
             </Button>
           ) : null}
           <span className="text-xs text-muted-foreground">
-            Extracted by AI, priced by the rules engine. Nothing is saved
-            until you create the quote.
+            Extracted by AI, priced by the rules engine. Nothing is saved until
+            you create the quote.
           </span>
         </div>
 

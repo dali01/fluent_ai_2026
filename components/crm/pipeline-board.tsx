@@ -91,9 +91,7 @@ function LeadCard({
           <span />
         )}
         {lead.value ? (
-          <Badge variant="secondary">
-            {formatMoney(lead.value, currency)}
-          </Badge>
+          <Badge variant="secondary">{formatMoney(lead.value, currency)}</Badge>
         ) : null}
       </div>
     </div>

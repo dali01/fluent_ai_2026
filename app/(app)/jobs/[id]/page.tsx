@@ -18,6 +18,7 @@ import { archiveJob, reorderJob } from "@/lib/actions/jobs";
 import { computeProfitability } from "@/lib/financials/profitability";
 import { estimateJobTurnaround } from "@/lib/production/report";
 import { meetsDueDate } from "@/lib/production/turnaround";
+import { estimateWaste } from "@/lib/production/waste";
 import { requireOrg } from "@/lib/auth/require-org";
 import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
@@ -49,9 +50,19 @@ export default async function JobDetailPage({
           },
         },
       },
-      press: { select: { name: true } },
+      press: {
+        select: {
+          name: true,
+          makereadySheets: true,
+          spoilagePercent: true,
+        },
+      },
       materials: {
-        include: { inventoryItem: { select: { name: true, unit: true } } },
+        include: {
+          inventoryItem: {
+            select: { name: true, unit: true, costPerUnit: true },
+          },
+        },
         orderBy: { createdAt: "asc" },
       },
       stockMovements: {
@@ -109,6 +120,21 @@ export default async function JobDetailPage({
   const { currency } = await readGeneralConfig(orgId);
   const kr = (n: number) => formatMoney(n, currency);
   const turnaround = await estimateJobTurnaround(orgId, id);
+  const waste = job.press
+    ? estimateWaste({
+        press: {
+          name: job.press.name,
+          makereadySheets: job.press.makereadySheets,
+          spoilagePercent: job.press.spoilagePercent
+            ? Number(job.press.spoilagePercent)
+            : null,
+        },
+        runSheets: job.quantity,
+        costPerSheet: job.materials[0]?.inventoryItem.costPerUnit
+          ? Number(job.materials[0].inventoryItem.costPerUnit)
+          : null,
+      })
+    : null;
 
   const defaultContactId = job.company.contacts[0]?.id ?? null;
 
@@ -215,6 +241,45 @@ export default async function JobDetailPage({
         </Card>
       </div>
 
+      {/* Waste is a MODEL, not a measurement, until actuals are
+          recorded — the wording says so rather than implying otherwise. */}
+      {waste ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Paper to order (estimated)</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2 text-sm">
+            <div className="flex flex-wrap items-baseline gap-3">
+              <span className="font-mono text-lg font-semibold">
+                {waste.sheetsRequired.toLocaleString("sv-SE")} sheets
+              </span>
+              <span className="text-muted-foreground">
+                for a run of {job.quantity.toLocaleString("sv-SE")} —{" "}
+                {waste.totalWasteSheets.toLocaleString("sv-SE")} allowed for
+                waste ({waste.wastePercent}%)
+                {waste.costCents !== null
+                  ? `, about ${kr(waste.costCents / 100)}`
+                  : ""}
+              </span>
+            </div>
+            <ul className="flex flex-col gap-0.5 text-muted-foreground">
+              {waste.factors.map((f) => (
+                <li key={f.factor}>
+                  <span className="font-mono">
+                    {f.sheets.toLocaleString("sv-SE")}
+                  </span>{" "}
+                  {f.factor} — {f.detail}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-muted-foreground">
+              Estimated from the press&apos;s configured figures. Record actual
+              usage against the materials below and this becomes measurable.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* Turnaround is only shown when the press has capability data —
           an invented date is worse than none, because it gets repeated
           to the customer. */}
@@ -313,6 +378,8 @@ export default async function JobDetailPage({
           itemName: m.inventoryItem.name,
           unit: m.inventoryItem.unit,
           quantityPlanned: Number(m.quantityPlanned),
+          quantityActual:
+            m.quantityActual !== null ? Number(m.quantityActual) : null,
           consumed: consumedItemIds.has(m.inventoryItemId),
         }))}
         items={inventoryItems}

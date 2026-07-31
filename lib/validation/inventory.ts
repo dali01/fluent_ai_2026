@@ -51,3 +51,9 @@ export const scheduleBlockSchema = z
     message: "End must be after start",
     path: ["endsAt"],
   });
+
+/** Recording what a run really consumed (optional, see job-materials.ts). */
+export const actualUsageSchema = z.object({
+  quantityActual: z.coerce.number().min(0).max(100_000_000),
+  quantitySpoiled: z.coerce.number().min(0).max(100_000_000).optional(),
+});

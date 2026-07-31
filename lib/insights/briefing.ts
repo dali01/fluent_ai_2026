@@ -12,7 +12,12 @@ export type OwnerBriefingData = {
   weekOf: string;
   pipeline: { stage: string; count: number; value: number }[];
   pipelineValue: number;
-  dueThisWeek: { jobNumber: number; title: string; dueDate: string; rush: boolean }[];
+  dueThisWeek: {
+    jobNumber: number;
+    title: string;
+    dueDate: string;
+    rush: boolean;
+  }[];
   overdueJobs: number;
   overdueInvoices: { count: number; total: number };
   awaitingProof: number;
@@ -49,7 +54,10 @@ export async function buildOwnerBriefing(
         orderBy: { dueDate: "asc" },
       }),
       db.invoice.findMany({
-        where: { deletedAt: null, status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] } },
+        where: {
+          deletedAt: null,
+          status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] },
+        },
         select: { total: true, dueDate: true },
       }),
       db.proof.count({ where: { status: "SENT" } }),
@@ -116,9 +124,7 @@ export async function buildOwnerBriefing(
     },
     awaitingProof: proofs,
     lowStock: items
-      .filter(
-        (i) => Number(i.quantityOnHand) <= Number(i.reorderThreshold),
-      )
+      .filter((i) => Number(i.quantityOnHand) <= Number(i.reorderThreshold))
       .map((i) => ({
         name: i.name,
         onHand: Number(i.quantityOnHand),

@@ -15,12 +15,14 @@ import {
 } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/actions/form";
 import { addJobMaterial, removeJobMaterial } from "@/lib/actions/job-materials";
+import { ActualUsageDialog } from "./actual-usage-dialog";
 
 export type MaterialRow = {
   id: string;
   itemName: string;
   unit: string;
   quantityPlanned: number;
+  quantityActual: number | null;
   consumed: boolean;
 };
 
@@ -114,6 +116,36 @@ export function JobMaterialsCard({
                     <span className="ml-2 text-xs text-chart-5">deducted</span>
                   ) : null}
                 </span>
+                {material.quantityActual !== null ? (
+                  <span className="font-mono text-xs">
+                    actual {material.quantityActual.toLocaleString("sv-SE")}
+                    <span
+                      className={
+                        material.quantityActual > material.quantityPlanned
+                          ? "text-chart-3"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      {" "}
+                      (
+                      {material.quantityActual > material.quantityPlanned
+                        ? "+"
+                        : ""}
+                      {(
+                        material.quantityActual - material.quantityPlanned
+                      ).toLocaleString("sv-SE")}
+                      )
+                    </span>
+                  </span>
+                ) : material.consumed ? (
+                  <ActualUsageDialog
+                    jobId={jobId}
+                    materialId={material.id}
+                    itemName={material.itemName}
+                    unit={material.unit}
+                    quantityPlanned={material.quantityPlanned}
+                  />
+                ) : null}
                 {!material.consumed && !jobDone ? (
                   <Button
                     variant="ghost"

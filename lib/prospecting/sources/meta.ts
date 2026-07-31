@@ -27,12 +27,7 @@ export type SourceId = (typeof SOURCE_IDS)[number];
 
 /** Which screening function guards this source (see lib/prospecting/relevance.ts). */
 export type RelevanceKind =
-  | "local"
-  | "osm"
-  | "fda-drug"
-  | "fda-device"
-  | "filing"
-  | "trademark";
+  "local" | "osm" | "fda-drug" | "fda-device" | "filing" | "trademark";
 
 export type SourceMeta = {
   id: SourceId;

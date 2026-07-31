@@ -71,8 +71,7 @@ export function scoreReorder(
 
   // 0 at ratio 0.5, 0.9 at ratio 1.5, capped; tapers to 0 from 2.5× to 5×
   const ramp = Math.min(MAX_LIKELIHOOD, Math.max(0, (dueRatio - 0.5) * 0.9));
-  const lapse =
-    dueRatio <= 2.5 ? 1 : Math.max(0, 1 - (dueRatio - 2.5) / 2.5);
+  const lapse = dueRatio <= 2.5 ? 1 : Math.max(0, 1 - (dueRatio - 2.5) / 2.5);
   const likelihood = ramp * lapse;
 
   const last = dated[dated.length - 1];

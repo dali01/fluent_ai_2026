@@ -45,9 +45,8 @@ export function scoreChurn(
     (now.getTime() - dated[dated.length - 1].at.getTime()) / MS_PER_DAY;
 
   // Dormancy: 0 risk at 1× the expected gap, MAX at 4×
-  const scale = typicalIntervalDays && typicalIntervalDays > 0
-    ? typicalIntervalDays
-    : 365;
+  const scale =
+    typicalIntervalDays && typicalIntervalDays > 0 ? typicalIntervalDays : 365;
   const dormancy = Math.min(
     MAX_RISK,
     Math.max(0, ((daysSinceLast / scale - 1) / 3) * MAX_RISK),
