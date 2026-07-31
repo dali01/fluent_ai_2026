@@ -643,44 +643,68 @@ async function main() {
     },
   });
 
-  await t.stockMovement.createMany({
-    data: [
+  // Spread consumption across the last 14 months so the demand forecast
+  // has complete months to average — a ledger stamped entirely "today"
+  // is correctly read as no history at all.
+  const consumption: Array<{
+    itemId: string;
+    delta: number;
+    reason: "PURCHASE" | "JOB_CONSUMPTION" | "WASTE";
+    note: string;
+    daysAgo: number;
+  }> = [];
+  for (let month = 1; month <= 14; month++) {
+    const daysAgo = month * 30;
+    // Paper use rises gently and peaks before the autumn season
+    const seasonal = month <= 3 ? 1.25 : month >= 10 ? 0.85 : 1;
+    consumption.push(
       {
-        ...org,
-        inventoryItemId: uncoated.id,
-        delta: 5000,
-        reason: "PURCHASE",
-        note: "Q2 replenishment",
-      },
-      {
-        ...org,
-        inventoryItemId: uncoated.id,
-        delta: -4100,
+        itemId: uncoated.id,
+        delta: -Math.round(3200 * seasonal),
         reason: "JOB_CONSUMPTION",
-        note: "menu runs",
+        note: "menu and flyer runs",
+        daysAgo,
       },
       {
-        ...org,
-        inventoryItemId: uncoated.id,
-        delta: -100,
+        itemId: uncoated.id,
+        delta: -Math.round(120 * seasonal),
         reason: "WASTE",
         note: "makeready spoilage",
+        daysAgo,
       },
       {
-        ...org,
-        inventoryItemId: vinyl.id,
-        delta: 250,
-        reason: "PURCHASE",
-        note: "signage stock",
-      },
-      {
-        ...org,
-        inventoryItemId: silk.id,
-        delta: -1600,
+        itemId: silk.id,
+        delta: -Math.round(1400 * seasonal),
         reason: "JOB_CONSUMPTION",
-        note: "board runs",
+        note: "board and cover runs",
+        daysAgo,
       },
-    ],
+      {
+        itemId: uncoated.id,
+        delta: 4000,
+        reason: "PURCHASE",
+        note: "monthly replenishment",
+        daysAgo: daysAgo - 2,
+      },
+    );
+  }
+  consumption.push({
+    itemId: vinyl.id,
+    delta: 250,
+    reason: "PURCHASE",
+    note: "signage stock",
+    daysAgo: 20,
+  });
+
+  await t.stockMovement.createMany({
+    data: consumption.map((c) => ({
+      ...org,
+      inventoryItemId: c.itemId,
+      delta: c.delta,
+      reason: c.reason,
+      note: c.note,
+      createdAt: daysAgo(c.daysAgo),
+    })),
   });
 
   // ── Jobs (time-shaped histories for /insights) ─────────────────

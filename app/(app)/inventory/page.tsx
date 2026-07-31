@@ -15,6 +15,7 @@ import {
 import { requireOrg } from "@/lib/auth/require-org";
 import { readGeneralConfig } from "@/lib/db/org-settings";
 import { tenantDb } from "@/lib/db/tenant";
+import { buildDemandForecasts } from "@/lib/insights/demand-report";
 import { formatMoney } from "@/lib/format/money";
 
 export const metadata = { title: "Inventory" };
@@ -24,7 +25,7 @@ export default async function InventoryPage() {
   const db = tenantDb(orgId);
   const { currency } = await readGeneralConfig(orgId);
 
-  const [items, movements] = await Promise.all([
+  const [items, movements, forecasts] = await Promise.all([
     db.inventoryItem.findMany({
       where: { deletedAt: null },
       orderBy: [{ type: "asc" }, { name: "asc" }],
@@ -37,6 +38,7 @@ export default async function InventoryPage() {
         job: { select: { id: true, jobNumber: true } },
       },
     }),
+    buildDemandForecasts(orgId),
   ]);
 
   const lowStock = items.filter(
@@ -64,6 +66,45 @@ export default async function InventoryPage() {
             </span>{" "}
             {lowStock.map((i) => i.name).join(", ")}
           </span>
+        </div>
+      ) : null}
+
+      {/* Projected from this shop's own ledger. It says how long stock
+          lasts, not when to order — supplier lead times aren't known. */}
+      {forecasts.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <h2 className="text-lg font-semibold tracking-tight">
+            Demand forecast
+          </h2>
+          <div className="flex flex-col gap-2">
+            {forecasts.slice(0, 5).map((f) => (
+              <div
+                key={f.itemName}
+                className="flex flex-col gap-1 rounded-xl border bg-card p-3 text-sm"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-medium">{f.itemName}</span>
+                  <span
+                    className={
+                      f.daysOfCover !== null && f.daysOfCover < 30
+                        ? "font-mono font-semibold text-chart-3"
+                        : "font-mono text-muted-foreground"
+                    }
+                  >
+                    {f.daysOfCover !== null
+                      ? `${f.daysOfCover} days of cover`
+                      : "not consumed"}
+                  </span>
+                </div>
+                <p className="text-muted-foreground">{f.rationale}</p>
+                <ul className="list-disc pl-5 text-xs text-muted-foreground">
+                  {f.caveats.map((c) => (
+                    <li key={c}>{c}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
 

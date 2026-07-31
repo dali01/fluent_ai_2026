@@ -444,3 +444,29 @@ Running log — newest last. Format: date, decision, why.
   consolidation avoids, shows its caveats _with_ the saving rather than
   behind it, and flags jobs whose artwork isn't approved — a suggestion
   that wastes stock destroys trust the first time it's wrong.
+
+## 2026-07-31 — Tier 3
+
+- **Demand forecasting excludes the current partial month.** A
+  half-finished month otherwise reads as a collapse in demand. It also
+  refuses a seasonal index under 12 months of history and says so, and
+  every forecast carries the caveat that **supplier lead time is
+  unknown** — the system can say how long stock lasts, not when to
+  order, because no lead time exists in the schema.
+- **Portal quote requests are a separate, explicit action.** The chatbot
+  stays read-only; "Request a quote" is a distinct button that creates a
+  `QUOTE_REQUESTED` lead for a human to price. The lead is created even
+  when extraction fails — a customer asking for a quote must never be
+  dropped because a model call was.
+- **Compliance radar is an upsell surface, not a prospecting source**,
+  because rules name industries rather than companies. Two false
+  positives found by running it against the live Federal Register, both
+  now regression-tested: "Food and Drug Administration" in the agency
+  boilerplate made every FDA device rule a _food_ rule, and matching
+  against the union of all affected industries' tags let a restaurant
+  match a medical-device regulation. Industries are matched one at a
+  time, and each customer reports which industry actually caught them.
+  Precision went from 21 matches to 2 on the same feed.
+- **Demo stock movements are backdated across 14 months.** A ledger
+  stamped entirely "today" is correctly read as no history, so the
+  forecast showed nothing at all until the seed spread it out.

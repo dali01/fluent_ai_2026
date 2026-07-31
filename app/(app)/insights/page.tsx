@@ -4,7 +4,9 @@ import {
   type InsightRowData,
 } from "@/components/insights/insight-row";
 import { RecomputeButton } from "@/components/insights/recompute-button";
+import { Badge } from "@/components/ui/badge";
 import { requireOrg } from "@/lib/auth/require-org";
+import { buildComplianceRadar } from "@/lib/compliance/report";
 import { tenantDb } from "@/lib/db/tenant";
 import { buildProductionReport } from "@/lib/production/report";
 import { cn } from "@/lib/utils";
@@ -17,7 +19,7 @@ export default async function InsightsPage() {
   const { orgId } = await requireOrg();
   const db = tenantDb(orgId);
 
-  const [scores, production] = await Promise.all([
+  const [scores, production, compliance] = await Promise.all([
     db.leadScore.findMany({
       where: { company: { deletedAt: null } },
       include: { company: { select: { id: true, name: true } } },
@@ -25,6 +27,8 @@ export default async function InsightsPage() {
       take: 500,
     }),
     buildProductionReport(orgId),
+    // A public API on a page render: never let it break the page
+    buildComplianceRadar(orgId).catch(() => []),
   ]);
 
   const toRow = (
@@ -128,6 +132,47 @@ export default async function InsightsPage() {
           </div>
         </div>
       </section>
+
+      {/* Regulations name industries, not companies — so this is an
+          upsell signal against customers you already have, never a
+          prospecting source. */}
+      {compliance.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-heading text-lg font-semibold">
+            Compliance radar ({compliance.length})
+          </h2>
+          <div className="flex flex-col gap-2">
+            {compliance.slice(0, 4).map((match) => (
+              <div
+                key={match.rule.documentNumber}
+                className="flex flex-col gap-1.5 rounded-xl border bg-card p-3 text-sm"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <a
+                    href={match.rule.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium hover:underline"
+                  >
+                    {match.rule.title}
+                  </a>
+                  <Badge
+                    variant={
+                      match.urgency === "imminent" ? "destructive" : "outline"
+                    }
+                  >
+                    {match.urgency}
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground">{match.rationale}</p>
+                <p className="text-muted-foreground">
+                  {match.customers.map((c) => c.name).join(", ")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="flex flex-col gap-3">
         <h2 className="font-heading text-lg font-semibold">
