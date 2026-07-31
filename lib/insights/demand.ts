@@ -31,7 +31,6 @@ export type DemandForecast = {
 
 /** Below this, a "seasonal pattern" is noise. */
 export const MIN_MONTHS = 6;
-const DAY = 86_400_000;
 
 function monthKey(d: Date): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
