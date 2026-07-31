@@ -380,3 +380,35 @@ Running log — newest last. Format: date, decision, why.
   rather than the prospect model; **USPTO trademarks** — needs a free
   registered key and its Open Data Portal contract could not be verified
   after the June 2026 Developer Hub decommission.
+
+## 2026-07-31 — AI roadmap, steps 1–3
+
+- **`JobStatusEvent` is a separate model, not `ActivityLog.payload`.**
+  ActivityLog is a human-readable feed; cycle time is arithmetic. The
+  decisive detail was that `updateJob` changed status with **no log at
+  all**, so any measurement built on the feed would have been quietly
+  wrong for form-driven moves. Both writers now go through one
+  `recordStatusChange` helper.
+- **`deliveredAt` stamps once, on first completion.** Re-entering DONE
+  must not move it, or on-time performance becomes editable after the
+  fact. `dueDate` is the promise; `deliveredAt` is what happened.
+- **Press capability fields are all nullable by design.** A shop that
+  hasn't filled them in gets "no estimate" rather than a fabricated
+  turnaround. Features must degrade, not guess.
+- **RFQ intake keeps Claude away from money.** The model extracts a
+  spec; `computeQuote` prices it; a human saves it. Every inferred value
+  is surfaced as an assumption, and unknowns become questions instead of
+  defaults — a plausible-looking wrong quantity is worse than a gap.
+- **`normalizeExtraction` guards the one machine-readable field.** A
+  live test enquiry said "by the 14th" and the model returned exactly
+  that string; prose in `dueDate` would have flowed into `Job.dueDate`.
+  Non-ISO dates become null plus a clarification, because only the
+  customer knows the month. Prompting alone was not enough — the guard
+  is deterministic.
+- **Briefing recipients come from Clerk admins.** `Organization` has no
+  owner email, and adding one would duplicate what Clerk already knows.
+- **The briefing prompt carries a vocabulary note** after the model
+  described pipeline _leads_ as "jobs" — the numbers were right, the
+  noun was not, and to an owner those are different things.
+- **AI spend is shown in USD** regardless of the org's display currency,
+  because that is the currency Anthropic bills in.

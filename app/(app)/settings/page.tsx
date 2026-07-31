@@ -14,10 +14,12 @@ import {
   sourceConfigsFrom,
   SOURCE_IDS,
 } from "@/lib/prospecting/sources";
+import { readAiSpend } from "@/lib/ai/spend";
 import {
   readGeneralConfig,
   readProspectingConfig,
 } from "@/lib/db/org-settings";
+import { formatMoney } from "@/lib/format/money";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -37,16 +39,18 @@ export default async function SettingsPage() {
   const { orgId } = await requireOrg();
   const db = tenantDb(orgId);
 
-  const [tiers, rules, prospecting, general, organization] = await Promise.all([
-    db.priceTier.findMany({ orderBy: { name: "asc" } }),
-    db.pricingRule.findMany({ orderBy: [{ type: "asc" }, { name: "asc" }] }),
-    readProspectingConfig(orgId),
-    readGeneralConfig(orgId),
-    (async () =>
-      (await clerkClient()).organizations
-        .getOrganization({ organizationId: orgId })
-        .catch(() => null))(),
-  ]);
+  const [tiers, rules, prospecting, general, organization, aiSpend] =
+    await Promise.all([
+      db.priceTier.findMany({ orderBy: { name: "asc" } }),
+      db.pricingRule.findMany({ orderBy: [{ type: "asc" }, { name: "asc" }] }),
+      readProspectingConfig(orgId),
+      readGeneralConfig(orgId),
+      (async () =>
+        (await clerkClient()).organizations
+          .getOrganization({ organizationId: orgId })
+          .catch(() => null))(),
+      readAiSpend(orgId),
+    ]);
 
   // Availability is a server-side fact (env + config); the form only
   // renders it.
@@ -119,6 +123,84 @@ export default async function SettingsPage() {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>AI usage — last 30 days</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {aiSpend.totalCalls === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No AI calls yet. Every Claude call records its model, tokens and
+              cost here.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap gap-6 text-sm">
+                <span>
+                  <span className="font-mono text-lg font-semibold">
+                    {formatMoney(aiSpend.totalCostCents / 100, "USD")}
+                  </span>{" "}
+                  <span className="text-muted-foreground">total</span>
+                </span>
+                <span>
+                  <span className="font-mono text-lg font-semibold">
+                    {aiSpend.totalCalls}
+                  </span>{" "}
+                  <span className="text-muted-foreground">calls</span>
+                </span>
+                {aiSpend.failedCalls > 0 ? (
+                  <span className="text-destructive">
+                    <span className="font-mono text-lg font-semibold">
+                      {aiSpend.failedCalls}
+                    </span>{" "}
+                    failed
+                  </span>
+                ) : null}
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Feature</TableHead>
+                    <TableHead>Calls</TableHead>
+                    <TableHead>Tokens in / out</TableHead>
+                    <TableHead>Cost</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {aiSpend.byKind.map((row) => (
+                    <TableRow key={row.kind}>
+                      <TableCell className="lowercase">
+                        {row.kind.replaceAll("_", " ")}
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        {row.calls}
+                        {row.failed > 0 ? (
+                          <span className="text-destructive">
+                            {" "}
+                            ({row.failed} failed)
+                          </span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {row.inputTokens.toLocaleString("sv-SE")} /{" "}
+                        {row.outputTokens.toLocaleString("sv-SE")}
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        {formatMoney(row.costCents / 100, "USD")}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <p className="text-xs text-muted-foreground">
+                Billed by Anthropic in USD, independent of this
+                organization&apos;s display currency.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

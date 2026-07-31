@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { FileText, Plus } from "lucide-react";
 import { QuoteStatusBadge } from "@/components/quotes/quote-status-badge";
+import { RfqIntake } from "@/components/quotes/rfq-intake";
+import { isAiEnabled } from "@/lib/ai/client";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -38,6 +40,8 @@ export default async function QuotesPage() {
           <Plus aria-hidden /> New quote
         </Button>
       </div>
+
+      {isAiEnabled() ? <RfqIntake currency={currency} /> : null}
 
       {quotes.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-16 text-muted-foreground">

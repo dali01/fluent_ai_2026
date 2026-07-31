@@ -44,6 +44,7 @@ model Organization {
   inventoryItems InventoryItem[]
   stockMovements StockMovement[]
   jobMaterials   JobMaterial[]
+  jobStatusEvents JobStatusEvent[]
   presses        Press[]
   scheduleBlocks ScheduleBlock[]
   vendors        Vendor[]
@@ -320,6 +321,9 @@ model Job {
   trimMm         Decimal?  @db.Decimal(5, 2)
   rush           Boolean   @default(false)
   dueDate        DateTime?
+  /// set when the job first reaches DONE — dueDate is the promise, this
+  /// is what actually happened. On-time performance needs both.
+  deliveredAt    DateTime?
   notes          String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -336,6 +340,7 @@ model Job {
   scheduleBlocks ScheduleBlock[]
   activityLogs   ActivityLog[]
   materials      JobMaterial[]
+  statusEvents   JobStatusEvent[]
 
   @@unique([organizationId, jobNumber])
   @@index([organizationId])
@@ -601,11 +606,25 @@ model StockMovement {
 }
 
 /// Schedulable press/equipment.
+///
+/// The capability fields are ALL nullable on purpose: a shop that hasn't
+/// filled them in gets "no estimate" rather than an invented number.
+/// Turnaround, batching and waste estimates read these (docs/ai-roadmap.md).
 model Press {
   id             String    @id @default(cuid())
   organizationId String
   name           String
   kind           String? // offset | digital | wide-format | finishing | ...
+  /// maximum sheet the press can take — the batching constraint
+  sheetWidthMm   Decimal?  @db.Decimal(8, 2)
+  sheetHeightMm  Decimal?  @db.Decimal(8, 2)
+  /// run speed once printing; drives the turnaround estimate
+  sheetsPerHour  Int?
+  /// setup time and sheets wasted per run — the batching payoff
+  makereadyMinutes Int?
+  makereadySheets  Int?
+  /// machine cost for margin work beyond material cost
+  hourlyRateCents  Int?
   notes          String?
   active         Boolean   @default(true)
   createdAt      DateTime  @default(now())
@@ -618,6 +637,31 @@ model Press {
 
   @@unique([organizationId, name])
   @@index([organizationId])
+}
+
+/// Append-only record of every job status transition.
+///
+/// ActivityLog carries an English sentence for humans; this carries the
+/// structured pair for arithmetic. Cycle time, per-stage dwell,
+/// bottleneck detection and on-time performance all read this, and none
+/// of them are computable from a summary string (docs/ai-roadmap.md).
+/// EVERY path that writes Job.status must append here.
+model JobStatusEvent {
+  id             String     @id @default(cuid())
+  organizationId String
+  jobId          String
+  /// null for the first observed state (job created, or pre-existing)
+  fromStatus     JobStatus?
+  toStatus       JobStatus
+  at             DateTime   @default(now())
+  actorId        String? // Clerk user ID; null when a job moves via automation
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  job          Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([jobId, at])
+  @@index([organizationId, toStatus, at])
 }
 
 /// Booked time on a press. Double-booking prevention is enforced in the
@@ -786,6 +830,8 @@ enum AiTaskKind {
   WASTE_ESTIMATE
   DEMAND_FORECAST
   PORTAL_QUOTE_CHAT
+  RFQ_EXTRACTION
+  OWNER_BRIEFING
 }
 
 enum AiTaskStatus {
