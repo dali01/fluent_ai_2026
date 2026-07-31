@@ -23,8 +23,22 @@ import type {
  * already exists nearby.
  */
 
-const ENDPOINT = "https://overpass-api.de/api/interpreter";
+/**
+ * Overpass is a donated public service and its mirrors differ in load,
+ * rate limiting and tolerance of datacenter traffic — the main instance
+ * refused our Vercel egress outright ("fetch failed") while working
+ * fine from a laptop. Try the mirrors in order rather than letting one
+ * host's policy kill the agent.
+ */
+const ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+];
 const USER_AGENT = "FluentAI-CRM/1.0 (print-shop prospecting; +fluent-ai)";
+
+/** Must stay under the serverless function budget, hence not 60s. */
+const QUERY_TIMEOUT_SECONDS = 25;
 
 const elementSchema = z
   .object({
@@ -140,7 +154,7 @@ export function buildOverpassQuery(
     .map((s) => `  nwr${s}(around:${radius},${lat},${lng})${newer};`)
     .join("\n");
 
-  return `[out:json][timeout:60];\n(\n${selectors}\n);\nout center meta ${limit};`;
+  return `[out:json][timeout:${QUERY_TIMEOUT_SECONDS}];\n(\n${selectors}\n);\nout center meta ${limit};`;
 }
 
 export function createOsmSource(config: OsmConfig): ProspectSource {
@@ -170,18 +184,37 @@ export function createOsmSource(config: OsmConfig): ProspectSource {
       }
 
       const query = buildOverpassQuery(config, ctx.since, ctx.limit);
-      const json = await fetchJson(ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain",
-          "User-Agent": USER_AGENT,
-        },
-        body: query,
-        signal: ctx.signal,
-        // Overpass queues requests under load; one retry is plenty
-        retries: 2,
-        attemptTimeoutMs: 60_000,
-      });
+
+      let json: unknown;
+      let lastError: unknown;
+      for (const endpoint of ENDPOINTS) {
+        try {
+          json = await fetchJson(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "text/plain",
+              "User-Agent": USER_AGENT,
+            },
+            body: query,
+            signal: ctx.signal,
+            // Overpass queues under load; the mirror list is the real
+            // retry strategy, so keep per-host attempts cheap.
+            retries: 1,
+            attemptTimeoutMs: (QUERY_TIMEOUT_SECONDS + 5) * 1000,
+          });
+          if (endpoint !== ENDPOINTS[0]) {
+            warnings.push(`primary Overpass unavailable; used ${endpoint}`);
+          }
+          break;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      if (json === undefined) {
+        throw lastError instanceof Error
+          ? new Error(`all Overpass mirrors failed: ${lastError.message}`)
+          : new Error("all Overpass mirrors failed");
+      }
 
       const prospects = parseOverpassResponse(json);
       const truncated = prospects.length >= ctx.limit;
