@@ -33,6 +33,7 @@ export function ProspectingSettingsForm({
     city: string;
     country: string;
     placesQueries: string[];
+    osmCategories: string[];
     minScore: number;
     maxPerRun: number;
   };
@@ -164,6 +165,26 @@ export function ProspectingSettingsForm({
         />
         {errors.placesQueries ? (
           <p className="text-sm text-destructive">{errors.placesQueries}</p>
+        ) : null}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="prospecting-osm">
+          OpenStreetMap categories (one tag per line)
+        </Label>
+        <Textarea
+          id="prospecting-osm"
+          name="osmCategories"
+          rows={4}
+          placeholder={"shop=bakery\namenity=restaurant\noffice=*"}
+          defaultValue={initial.osmCategories.join("\n")}
+          className="font-mono text-xs"
+        />
+        <p className="text-xs text-muted-foreground">
+          OSM tag selectors — <code>key=value</code>, or <code>key=*</code> for
+          any value. Needs a market centre (coordinates) to search around.
+        </p>
+        {errors.osmCategories ? (
+          <p className="text-sm text-destructive">{errors.osmCategories}</p>
         ) : null}
       </div>
       {state && !state.ok ? (

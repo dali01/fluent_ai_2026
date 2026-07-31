@@ -134,6 +134,7 @@ export default async function SettingsPage() {
               city: prospecting.market?.city ?? "",
               country: prospecting.market?.country ?? "SE",
               placesQueries: prospecting.placesQueries,
+              osmCategories: prospecting.osmCategories,
               minScore: prospecting.enrichment.minScore,
               maxPerRun: prospecting.enrichment.maxPerRun,
             }}

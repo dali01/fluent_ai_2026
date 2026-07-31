@@ -31,6 +31,9 @@ export type PermitFeedConfig = {
   dateField?: string;
   dateFormat?: string;
   categoryField?: string;
+  /** Column names vary per portal (Austin uses original_city / original_zip) */
+  cityField?: string;
+  postalCodeField?: string;
 };
 
 const rowSchema = z.record(z.string(), z.unknown());
@@ -119,9 +122,17 @@ export function parsePermitResponse(
       triggeredAt,
       address: {
         line1: addressParts.length > 0 ? addressParts.join(" ") : undefined,
-        city: str(row, "city") ?? str(row, "City"),
-        postalCode:
-          str(row, "zip") ?? str(row, "zipcode") ?? str(row, "postal_code"),
+        // Configured field first; the fallbacks are conveniences, never
+        // a substitute for mapping the feed properly.
+        city: config.cityField
+          ? str(row, config.cityField)
+          : (str(row, "city") ?? str(row, "original_city")),
+        postalCode: config.postalCodeField
+          ? str(row, config.postalCodeField)
+          : (str(row, "zip") ??
+            str(row, "zipcode") ??
+            str(row, "postal_code") ??
+            str(row, "original_zip")),
         country: undefined,
       },
       raw: {
@@ -137,20 +148,38 @@ export function parsePermitResponse(
   return out;
 }
 
+/** First-run lookback: a permit feed goes back decades, and the oldest
+ * rows are worthless as leads. Match the FDA connectors' 30-day default
+ * so an unattended first run stays small and current. */
+export const PERMIT_FIRST_RUN_DAYS = 30;
+
+/**
+ * Most feeds carry a date with no time, so a `> cursor` filter would
+ * skip permits added later on the cursor's own day. Re-poll one day of
+ * overlap every run — dedupe makes re-observation free, and the
+ * alternative is silently losing same-day records.
+ */
+export const PERMIT_OVERLAP_DAYS = 1;
+
 export function buildPermitUrl(
   config: PermitFeedConfig,
   since: string | undefined,
   limit: number,
+  now: Date = new Date(),
 ): string {
+  const fromDate = since
+    ? new Date(
+        new Date(`${since}Z`).getTime() - PERMIT_OVERLAP_DAYS * 86_400_000,
+      )
+    : new Date(now.getTime() - PERMIT_FIRST_RUN_DAYS * 86_400_000);
+  const from = fromDate.toISOString().slice(0, 19);
   const url = new URL(config.url);
   if (isArcGisUrl(config.url)) {
     url.searchParams.set("f", "json");
     url.searchParams.set("outFields", "*");
     url.searchParams.set(
       "where",
-      config.dateField && since
-        ? `${config.dateField} > DATE '${since}'`
-        : "1=1",
+      config.dateField ? `${config.dateField} > DATE '${from}'` : "1=1",
     );
     url.searchParams.set("resultRecordCount", String(limit));
     if (config.dateField) {
@@ -163,9 +192,7 @@ export function buildPermitUrl(
   url.searchParams.set("$limit", String(limit));
   if (config.dateField) {
     url.searchParams.set("$order", `${config.dateField} ASC`);
-    if (since) {
-      url.searchParams.set("$where", `${config.dateField} > '${since}'`);
-    }
+    url.searchParams.set("$where", `${config.dateField} > '${from}'`);
   }
   return url.toString();
 }

@@ -12,31 +12,31 @@ const austin: PermitFeedConfig = {
   url: "https://data.austintexas.gov/resource/3syk-w9eu.json",
   termsUrl: "https://data.austintexas.gov/terms-of-use",
   recordIdField: "permit_number",
-  nameField: "applicant_organization",
+  nameField: "contractor_company_name",
   addressFields: ["original_address1"],
-  dateField: "issued_date",
+  dateField: "issue_date",
   categoryField: "permit_class",
 };
 
 const socrataFixture = [
   {
     permit_number: "2026-071234 BP",
-    applicant_organization: "Green Grocer Market LLC",
+    contractor_company_name: "Green Grocer Market LLC",
     original_address1: "412 Congress Ave",
     city: "Austin",
     zip: "78701",
-    issued_date: "2026-07-24T00:00:00.000",
+    issue_date: "2026-07-24T00:00:00.000",
     permit_class: "Commercial Remodel",
   },
   {
     permit_number: "2026-071235 BP",
-    applicant_organization: "Daily Grind Coffee",
+    contractor_company_name: "Daily Grind Coffee",
     original_address1: "88 Lamar Blvd",
-    issued_date: "2026-07-25T00:00:00.000",
+    issue_date: "2026-07-25T00:00:00.000",
     permit_class: "Restaurant",
   },
   { permit_number: "2026-071236 BP" }, // no applicant name — dropped
-  { applicant_organization: "No Permit Number Co" }, // no id — dropped
+  { contractor_company_name: "No Permit Number Co" }, // no id — dropped
 ];
 
 describe("parsePermitResponse (Socrata)", () => {
@@ -108,9 +108,9 @@ describe("parsePermitResponse (ArcGIS)", () => {
           {
             attributes: {
               permit_number: "A-1",
-              applicant_organization: "Lakeside Diner",
+              contractor_company_name: "Lakeside Diner",
               original_address1: "9 Shore Rd",
-              issued_date: "2026-07-20T00:00:00.000",
+              issue_date: "2026-07-20T00:00:00.000",
             },
           },
         ],
@@ -123,15 +123,26 @@ describe("parsePermitResponse (ArcGIS)", () => {
 });
 
 describe("buildPermitUrl", () => {
-  it("uses Socrata $where/$order/$limit", () => {
-    const url = buildPermitUrl(austin, "2026-07-01T00:00:00", 50);
+  it("uses Socrata $where/$order/$limit with a day of overlap", () => {
+    const url = buildPermitUrl(austin, "2026-07-10T00:00:00", 50);
     expect(url).toContain("%24limit=50");
-    expect(url).toContain("%24order=issued_date+ASC");
-    expect(url).toContain("issued_date+%3E+%272026-07-01T00%3A00%3A00%27");
+    expect(url).toContain("%24order=issue_date+ASC");
+    // One day back from the cursor: date-only feeds would otherwise drop
+    // permits added later on the cursor's own day.
+    expect(url).toContain("issue_date+%3E+%272026-07-09T00%3A00%3A00%27");
   });
 
-  it("omits $where on a first run", () => {
-    expect(buildPermitUrl(austin, undefined, 50)).not.toContain("%24where");
+  it("defaults a first run to a recent window, not all of history", () => {
+    // Ordering ASC from the beginning of time returns decades-old
+    // permits — useless as leads, and the run looks broken (0 created).
+    const url = buildPermitUrl(
+      austin,
+      undefined,
+      50,
+      new Date("2026-07-31T00:00:00Z"),
+    );
+    expect(url).toContain("%24where");
+    expect(url).toContain("2026-07-01T00%3A00%3A00");
   });
 
   it("switches dialect for an ArcGIS FeatureServer", () => {
@@ -140,11 +151,12 @@ describe("buildPermitUrl", () => {
       url: "https://services.arcgis.com/x/ArcGIS/rest/services/Permits/FeatureServer/0/query",
     };
     expect(isArcGisUrl(arcgis.url)).toBe(true);
-    const url = buildPermitUrl(arcgis, "2026-07-01", 25);
+    const url = buildPermitUrl(arcgis, "2026-07-01T00:00:00", 25);
     expect(url).toContain("f=json");
     expect(url).toContain("outFields=*");
     expect(url).toContain("resultRecordCount=25");
-    expect(url).toContain("DATE+%272026-07-01%27");
+    // Same one-day overlap as the Socrata dialect
+    expect(url).toContain("DATE+%272026-06-30T00%3A00%3A00%27");
   });
 
   it("treats a Socrata resource URL as not-ArcGIS", () => {
