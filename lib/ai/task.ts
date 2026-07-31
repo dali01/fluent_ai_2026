@@ -23,7 +23,8 @@ type AiTaskKind =
   | "WASTE_ESTIMATE"
   | "DEMAND_FORECAST"
   | "PORTAL_QUOTE_CHAT"
-  | "RFQ_EXTRACTION";
+  | "RFQ_EXTRACTION"
+  | "OWNER_BRIEFING";
 
 export type AiUsage = {
   model: string;

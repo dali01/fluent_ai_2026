@@ -831,6 +831,7 @@ enum AiTaskKind {
   DEMAND_FORECAST
   PORTAL_QUOTE_CHAT
   RFQ_EXTRACTION
+  OWNER_BRIEFING
 }
 
 enum AiTaskStatus {

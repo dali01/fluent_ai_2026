@@ -67,3 +67,40 @@ export function proofRequestEmail(options: {
     ),
   };
 }
+
+/**
+ * Weekly owner briefing — internal, unlike the customer-facing templates
+ * above, so the footer differs. Numbers come from the deterministic KPI
+ * pack; the prose is Claude's narration of them.
+ */
+export function ownerBriefingEmail(options: {
+  orgName: string;
+  weekOf: string;
+  headline: string;
+  narrative: string;
+  actions: string[];
+  appUrl: string;
+}): { subject: string; html: string } {
+  const actions =
+    options.actions.length > 0
+      ? `<ul style="padding-left:18px;margin:16px 0 0">${options.actions
+          .map((a) => `<li style="margin-bottom:6px">${a}</li>`)
+          .join("")}</ul>`
+      : "";
+  return {
+    subject: `${options.orgName} — week of ${options.weekOf}: ${options.headline}`,
+    html: `<!doctype html>
+<html><body style="margin:0;padding:0;background:#f6f5f2;font-family:Inter,Arial,sans-serif;color:#22242e">
+<div style="max-width:560px;margin:0 auto;padding:32px 16px">
+  <div style="font-weight:600;font-size:14px;margin-bottom:16px">${options.orgName} <span style="color:#8b8fa3">· Monday briefing</span></div>
+  <div style="background:#ffffff;border:1px solid #e6e5ef;border-radius:12px;padding:28px">
+    <h1 style="font-size:18px;margin:0 0 12px">${options.headline}</h1>
+    <p style="font-size:14px;line-height:1.6;margin:0">${options.narrative}</p>
+    ${actions}
+    ${button(`${options.appUrl}/dashboard`, "Open the dashboard")}
+  </div>
+  <div style="color:#8b8fa3;font-size:12px;margin-top:16px">Figures computed from your Fluent AI data; the summary is AI-written from those figures.</div>
+</div>
+</body></html>`,
+  };
+}
