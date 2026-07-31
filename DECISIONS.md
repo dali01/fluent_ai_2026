@@ -314,7 +314,7 @@ Running log — newest last. Format: date, decision, why.
   defaults **off** because its connector is still a stub.
 - **Three named gates, each with a reason**: org switch → agent toggle →
   connector readiness. Precedence is that order, so the message a user
-  sees names the thing *they* can fix first.
+  sees names the thing _they_ can fix first.
 - **`unavailableReason()` joins the connector interface.** `isConfigured()`
   alone could only say no, which produced the worst possible UX: a
   manual "Run" that reported success while doing nothing, because an
@@ -329,3 +329,54 @@ Running log — newest last. Format: date, decision, why.
   form can render the agent list client-side; `sources/index.ts` (which
   constructs connectors and pulls in fetch plumbing) re-exports it. Same
   rule as `lib/format` vs `lib/db`.
+
+## 2026-07-31 — Free discovery agents
+
+- **The registry is now one exhaustive table.** `SOURCE_META` carries a
+  source's enum value, dedupe mode, relevance screen, badge class and
+  outreach angle, so adding an agent is a compile error until it is
+  fully wired. This replaced five parallel lookups that each failed
+  _silently_: `SOURCE_TO_ENUM`'s `?? "MANUAL"` fallback (wrong weights
+  and dedupe bucket), a hand-written enum union (runtime Prisma error
+  before the try/catch, recorded nowhere), relevance defaulting to the
+  local screen (100% screened out, run still reports SUCCEEDED), and
+  `Record<string, string>` maps for badges and outreach angles.
+  `tests/unit/prospecting-registry.test.ts` asserts every one.
+- **OpenStreetMap replaces the paid dependency for local discovery.**
+  Overpass is keyless; the licence cost is attribution, not money, so
+  "© OpenStreetMap contributors" renders on `/prospects` whenever an
+  OSM row is shown. `(newer:"<cursor>")` makes it a genuine trigger
+  source rather than a coverage sweep, and `version === 1` distinguishes
+  a newly mapped business from an old one someone just corrected.
+  Category selectors are validated against `key=value` before being
+  interpolated into Overpass QL — config is not a query language.
+- **`isRelevantOsm` deliberately accepts coordinates instead of an
+  address.** OSM POIs routinely lack `addr:*` tags, and the local
+  screen's hard address requirement would reject most of the map. The
+  OSM node id is a stable `externalId`, so dedupe holds regardless.
+- **The permit connector is config-driven, not city-specific.** One
+  adapter speaks Socrata and ArcGIS; a new city is a `permitSource`
+  block (feed URL, field mapping, **required** `termsUrl`). The first
+  live run failed loudly on guessed column names — which is the
+  designed behaviour, and why city/postcode fields are configurable now
+  rather than hardcoded.
+- **Feed timestamps are read as UTC.** Open-data portals publish civil
+  times with no zone, so `new Date()` read them as local: the same feed
+  produced different trigger dates on a UTC+2 laptop and on Vercel,
+  shifting recency scores and the watermark by a day.
+- **Windowing rules learned live:** a first run defaults to 30 days
+  (ordering ASC from the beginning of time returned 1980s permits), and
+  the cursor re-polls one day of overlap because `>` on a date-only
+  column silently skips records added later that same day.
+- **`proximity` weights are zero everywhere.** `ingest.ts` never passes
+  a proximity value, so Places' old 0.20 weight was unreachable points
+  that silently capped every Places score at 80.
+- **Sources considered and NOT built**, with reasons, so they are not
+  re-litigated: **Bolagsverket** — its free API is an org-number lookup,
+  so it cannot enumerate new companies and cannot drive discovery (also
+  OAuth2 credentials by post, docs behind a CAPTCHA); **Federal
+  Register** — labelling rules name industries, not companies, so it
+  belongs in a compliance/upsell surface against existing customers
+  rather than the prospect model; **USPTO trademarks** — needs a free
+  registered key and its Open Data Portal contract could not be verified
+  after the June 2026 Developer Hub decommission.

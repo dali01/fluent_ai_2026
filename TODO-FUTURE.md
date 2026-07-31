@@ -13,18 +13,22 @@
   [docs/prospecting.md](docs/prospecting.md) (Phase 8). Deferred beyond
   that design:
 
-  | Deferred                                                     | Why                                                                                                                               |
-  | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-  | Real permit/licence parser                                   | Pilot source URL/format supplied later; guessing now is guaranteed rework. Interface + stub ships.                                |
-  | HubSpot sync — recommend dropping entirely                   | Fluent AI _is_ the CRM. Not a phase-ordering deferral, a product rejection.                                                       |
-  | MCP-native enrichment                                        | Vendor MCP servers are interactive-OAuth-only; unattended cron has no consenting user. Drop-in when static-token auth appears.    |
-  | Cold-outreach sending + consent/suppression tracking         | CAN-SPAM/GDPR surface with no consent model in the schema. Drafts only.                                                           |
-  | Fuzzy matching (`pg_trgm`) + denormalized `Company.nameKey`  | Suffix stripping plus token-set equality covers realistic variance; a column on a live table plus a backfill isn't justified yet. |
-  | Places raw-payload purge job                                 | Enforces the content-caching window structurally.                                                                                 |
-  | Prospect detail route, pagination, saved views, bulk qualify | One page with collapsible rows and `take: 100` is the minimum useful surface.                                                     |
-  | Per-org run cadence (schedules per agent)                    | Per-agent on/off toggles shipped; per-org _schedules_ need the queue migration, not another cron path.                            |
-  | Geocoding for the proximity score factor                     | Needs a geocoding provider; the factor is weight-zero until then.                                                                 |
-  | Consolidating the Resend call onto `http.ts`                 | Real cleanup, wrong PR.                                                                                                           |
+  | Deferred                                                     | Why                                                                                                                                                                               |
+  | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | Tenant names from permit descriptions                        | The Austin feed names the CONTRACTOR, not the business opening. Extracting the tenant from free-text descriptions is AI work, not parsing.                                        |
+  | Swedish "newly registered business" feed                     | Bolagsverket's free API is an org-number lookup and cannot enumerate new companies; a paid search tier or PoiT scraping is the only route. Swedish orgs run FDA + OSM until then. |
+  | USPTO trademark agent                                        | Needs a free registered key; the Open Data Portal's trademark contract could not be verified after the June 2026 Developer Hub decommission. Registry slot and weights are ready. |
+  | SEC EDGAR agent                                              | Keyless but requires a contact User-Agent; registry slot and weights are ready, connector unbuilt.                                                                                |
+  | Federal Register compliance radar                            | Rules name industries, not companies — belongs against existing customers as a reprint/upsell signal, not as prospects. Design in docs/ai-roadmap.md.                             |
+  | HubSpot sync — recommend dropping entirely                   | Fluent AI _is_ the CRM. Not a phase-ordering deferral, a product rejection.                                                                                                       |
+  | MCP-native enrichment                                        | Vendor MCP servers are interactive-OAuth-only; unattended cron has no consenting user. Drop-in when static-token auth appears.                                                    |
+  | Cold-outreach sending + consent/suppression tracking         | CAN-SPAM/GDPR surface with no consent model in the schema. Drafts only.                                                                                                           |
+  | Fuzzy matching (`pg_trgm`) + denormalized `Company.nameKey`  | Suffix stripping plus token-set equality covers realistic variance; a column on a live table plus a backfill isn't justified yet.                                                 |
+  | Places raw-payload purge job                                 | Enforces the content-caching window structurally.                                                                                                                                 |
+  | Prospect detail route, pagination, saved views, bulk qualify | One page with collapsible rows and `take: 100` is the minimum useful surface.                                                                                                     |
+  | Per-org run cadence (schedules per agent)                    | Per-agent on/off toggles shipped; per-org _schedules_ need the queue migration, not another cron path.                                                                            |
+  | Geocoding for the proximity score factor                     | Needs a geocoding provider; the factor is weight-zero until then.                                                                                                                 |
+  | Consolidating the Resend call onto `http.ts`                 | Real cleanup, wrong PR.                                                                                                                                                           |
 
 - **Real multi-currency** — currency is a per-org display setting today
   (`Organization.settings.general.currency`); amounts are never
