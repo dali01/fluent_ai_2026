@@ -1,7 +1,12 @@
 # AI roadmap — proposal
 
-**Status: proposal. Nothing here is built.** It exists so the schema
-additions can be argued about before code depends on them.
+**Status: partly built.** Steps 1–5 of §6 shipped on 2026-07-31 —
+the schema foundation, RFQ intake, the AI spend panel, the weekly owner
+briefing, turnaround promises and bottleneck analytics. What remains is
+Tier 2's batching and waste, plus Tier 3. Each section below is marked.
+
+The document is kept as written so the reasoning stays reviewable: the
+blockers in §1 are what made the ordering what it is.
 
 Fluent AI already uses Claude in four places: outreach drafting, insight
 explanations, prepress translation and the portal chatbot. All four obey
@@ -43,6 +48,9 @@ Verified against the current schema and action code.
 
 ### Blockers — these need schema, and pretending otherwise means guessing
 
+> Rows 1, 2 and 4 were fixed on 2026-07-31 (`Press` capability fields,
+> `JobStatusEvent`, `Job.deliveredAt`). Rows 3 and 5 stand.
+
 | Gap                                                                                                                                                                          | Consequence                                                                                                                 | Proposed fix                                                                                                                                                               |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **`Press` has no capability fields at all** — no sheet size, run speed, makeready time or hourly rate                                                                        | Turnaround, batching and waste estimates are _not computable_. Any number would be invented.                                | Add `sheetWidthMm`, `sheetHeightMm`, `sheetsPerHour`, `makereadyMinutes`, `makereadySheets`, `hourlyRateCents` — all nullable, features degrade to "no estimate" when null |
@@ -58,6 +66,8 @@ the seven proposed features. Everything in Tier 1 below needs neither.
 ---
 
 ## 2. Tier 1 — build now, no schema changes
+
+> **All four shipped.**
 
 ### 1.1 RFQ intake — "quote this email for me"
 
@@ -117,6 +127,9 @@ everything else legible.
 ---
 
 ## 3. Tier 2 — the print-native moat (needs the Tier-1 schema work)
+
+> **2.2 turnaround and 2.4 bottleneck analytics shipped; 2.1 batching
+> and 2.3 waste remain.**
 
 These are the reserved kinds, and they are what a generic CRM cannot do.
 
@@ -203,13 +216,18 @@ Not "later" — rejected on principle, so they don't get proposed again:
 
 ## 6. Suggested order
 
-1. `JobStatusEvent` + `Press` capability fields + `deliveredAt` (schema,
-   one migration, no AI)
-2. **RFQ intake** (1.1) — biggest daily time saving
-3. **AI spend panel** (1.4) and **owner briefing** (1.2) — cheap, visible
-4. **Turnaround promises** (2.2) — needs the schema from step 1
-5. **Bottleneck analytics** (2.4) — needs the events from step 1
-6. **Batching** (2.1) and **waste** (2.3) — highest effort, do last
+1. ~~`JobStatusEvent` + `Press` capability fields + `deliveredAt`~~ **done**
+2. ~~**RFQ intake** (1.1)~~ **done** — extraction only; the pricing engine
+   still owns the money
+3. ~~**AI spend panel** (1.4) and **owner briefing** (1.2)~~ **done**
+4. ~~**Turnaround promises** (2.2)~~ **done** — returns null rather than a
+   guess when a press has no capability data
+5. ~~**Bottleneck analytics** (2.4)~~ **done** — medians suppressed below
+   three samples
+6. **Batching** (2.1) and **waste** (2.3) — highest effort, still to do.
+   Waste additionally needs honest actuals (blocker row 3): until job
+   completion records a real quantity and spoilage, any waste figure is
+   an estimate from history and must be labelled as one.
 
 Each step is independently shippable and independently useful, which is
 the same sequencing rule the prospecting work followed.
