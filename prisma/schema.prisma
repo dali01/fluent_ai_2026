@@ -830,6 +830,7 @@ enum AiTaskKind {
   WASTE_ESTIMATE
   DEMAND_FORECAST
   PORTAL_QUOTE_CHAT
+  RFQ_EXTRACTION
 }
 
 enum AiTaskStatus {
