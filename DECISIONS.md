@@ -412,3 +412,35 @@ Running log — newest last. Format: date, decision, why.
   noun was not, and to an owner those are different things.
 - **AI spend is shown in USD** regardless of the org's display currency,
   because that is the currency Anthropic bills in.
+
+## 2026-07-31 — Production intelligence (roadmap steps 4–6)
+
+- **Turnaround reuses the scheduler's own overlap rule.** An estimate
+  that promised a slot the booking check would then reject would be
+  worse than no estimate, so the walk-forward uses the same half-open
+  predicate. It returns null without a press run speed — a fabricated
+  date gets repeated to a customer.
+- **Cycle time needed `JobStatusEvent` to exist at all**, which is why
+  the schema came first. Three deliberate honesty choices: no median
+  below three completed visits; jobs _currently_ in a stage count as
+  open rather than as samples (they'd bias it low); on-time excludes
+  jobs that never had a due date rather than scoring them as wins. It
+  also reports the oldest stuck job, which a median hides.
+- **Waste is modelled, not measured — and says so.** `estimateWaste()`
+  computes from configured press figures and is always labelled
+  "estimated"; `measuredSpoilage()` is a separate function that counts
+  only jobs with recorded actuals, above a five-sample floor, and
+  reports drift against the configured rate. Mixing the two would let
+  unrecorded jobs (where actual equals plan by construction) drag the
+  number to a flattering zero.
+- **Recording actuals is optional by design.** Prompting on every
+  completion buys accuracy the shop may not sustain; the affordance sits
+  on consumed materials instead, and corrects the ledger by the
+  difference (over-run → WASTE, under-run → RETURN) rather than
+  rewriting the original consumption movement.
+- **Batching consolidates setup and refuses to nest sheets.** True
+  imposition depends on grain direction, gripper margins and finishing
+  paths the schema doesn't model. It claims only the makeready that
+  consolidation avoids, shows its caveats _with_ the saving rather than
+  behind it, and flags jobs whose artwork isn't approved — a suggestion
+  that wastes stock destroys trust the first time it's wrong.

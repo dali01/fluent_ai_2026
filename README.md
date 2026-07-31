@@ -11,7 +11,7 @@ problems before they hit the press, and telling a rep who to call today.
 ## The AI edge
 
 Most "AI CRMs" bolt a chatbot onto a contact list. Fluent AI's AI does
-four specific jobs, each grounded in one architectural rule:
+seven specific jobs, each grounded in one architectural rule:
 
 > **Deterministic-first: the machine decides with code, Claude explains
 > in words.** Every score, verdict and price comes from pure, unit-tested
@@ -66,7 +66,23 @@ not a feature.
 Runs unattended on Vercel Cron, per-org isolated, behind constant-time
 secret auth. Dismissing a prospect suppresses it from every future run.
 
-### 2. Customer insights — who to call today
+### 2. Quoting from a customer's own words
+
+Turning "need ~2.5k A5 flyers, decent paper, folded, by the 14th" into a
+priced quote is typing, not judgement — and it is the biggest daily time
+sink in a print shop. Paste the enquiry on `/quotes` and Claude extracts
+the spec; the **deterministic pricing engine** prices it; a human
+confirms before anything is saved.
+
+Claude does the one thing it is genuinely better at than code —
+unstructured to structured — and touches no money. Every value it
+inferred is listed as an assumption ("read 'ca 2,5k' as 2500"), and
+genuine unknowns become questions for the customer rather than plausible
+defaults. A deterministic guard rejects prose in the date field: a real
+test enquiry said "by the 14th", which becomes a clarification, not a
+`dueDate`.
+
+### 3. Customer insights — who to call today
 
 `/insights` ranks your existing customers on two deterministic signals:
 
@@ -83,7 +99,36 @@ database column. **Claude's job:** on demand, turn the factors into a rep
 brief — what the numbers mean for _this_ customer, a concrete next step,
 and an opener grounded in their real order history.
 
-### 3. Prepress that speaks human
+### 4. Production intelligence — the print-native part
+
+Four measurements a generic CRM cannot make, all computed from the
+shop's own figures and all willing to say "not enough data":
+
+- **Turnaround promises.** Earliest feasible finish from press
+  throughput, makeready and existing bookings — stepping over
+  commitments with the same overlap rule the scheduler enforces, so an
+  estimate can never promise a slot the booking check would reject. No
+  run speed recorded? It returns nothing rather than a date a shop would
+  repeat to a customer.
+- **Bottleneck analytics.** Median dwell per stage, the slowest stage,
+  end-to-end time and on-time rate, from a structured record of every
+  status transition. Stages below three completed visits report nothing;
+  jobs currently sitting in a stage count as _open_ rather than dragging
+  the median down; on-time excludes jobs that never had a promised date.
+- **Paper to order.** Makeready plus run spoilage from the press's
+  configured figures — labelled **estimated**, always. A separate
+  measurement only counts jobs where somebody recorded real usage, and
+  only above five samples, then reports the drift against what the press
+  is configured for. Recording actuals is optional and never blocks
+  finishing a job.
+- **Batching opportunities.** Jobs sharing stock, colour mode and finish
+  that could run as one setup, with the makeready saved. Deliberately
+  conservative: it consolidates _setup_, it does **not** nest different
+  jobs onto a shared sheet, and it says so — real imposition depends on
+  grain, gripper and bleed the schema doesn't model, and a suggestion
+  that wastes stock destroys trust the first time it's wrong.
+
+### 5. Prepress that speaks human
 
 Artwork checks are pure, deterministic file inspection — trim size against
 job spec (orientation-agnostic, with cutting tolerance), bleed box
@@ -97,7 +142,7 @@ in their design tool. "Your trim box is 216×303 mm but the job is
 210×297 mm" becomes something you can actually send. Copy-to-clipboard,
 reviewed by you.
 
-### 4. A client portal that answers its own questions
+### 6. A client portal that answers its own questions
 
 Customers get a tokenised portal — live job status, e-signature proof
 approval (with IP, user-agent and SHA-256 signature hash), artwork upload
@@ -110,12 +155,22 @@ cannot discount, reschedule, promise, or change an order, it quotes
 prices as-is, and prompt-injection attempts are declined. Cross-customer
 and cross-tenant data are structurally unreachable, not filtered out.
 
+### 7. A weekly briefing that leads with what's wrong
+
+A countable KPI pack — pipeline by stage, jobs due and overdue, unpaid
+invoices, proofs waiting, low stock, reorder and churn names, on-time
+rate — assembled by a pure function and narrated by Claude, emailed to
+the org's admins on a Monday. It opens with money at risk, not a data
+dump. Every figure is supplied; the model prioritises and phrases, it
+does not compute.
+
 ### Cost accounting, built in
 
 Every Claude call runs through `runAiTask`, which drives an `AiTask` row
 from `RUNNING` to `SUCCEEDED`/`FAILED` and records model, token counts
-and computed cost in cents. Per-organization AI spend is a query, not a
-guess.
+and computed cost in cents. Settings shows the spend per feature over
+the last 30 days, so the cost of every AI surface is legible rather than
+invisible.
 
 ---
 
@@ -305,8 +360,10 @@ app/(portal)      tokenised client portal
 app/api           route handlers (files, cron, portal chat)
 lib/db            Prisma client + fail-closed tenant-scoped data access
 lib/auth          Clerk helpers (requireOrg)
-lib/ai            Claude client, AiTask cost runner, outreach/insights/prepress/chat
-lib/insights      deterministic reorder + churn scoring → LeadScore
+lib/ai            Claude client, AiTask cost runner, outreach/insights/
+                  prepress/chat/RFQ extraction/briefing, spend reporting
+lib/insights      deterministic reorder + churn scoring, weekly KPI pack
+lib/production    turnaround, cycle time, waste, batching — all pure
 lib/prospecting   lead sourcing: connectors, dedupe, relevance, scoring, pipeline
 lib/prepress      deterministic artwork checks
 lib/pricing       pure pricing engine

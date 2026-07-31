@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { KanbanSquare, Plus, Printer, Zap } from "lucide-react";
+import { KanbanSquare, Layers, Plus, Printer, Zap } from "lucide-react";
 import { JobStatusBadge } from "@/components/jobs/job-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/table";
 import { requireOrg } from "@/lib/auth/require-org";
 import { tenantDb } from "@/lib/db/tenant";
+import { readGeneralConfig } from "@/lib/db/org-settings";
+import { formatMoney } from "@/lib/format/money";
+import { findBatchOpportunities } from "@/lib/production/report";
 
 export const metadata = { title: "Jobs" };
 
@@ -25,14 +28,18 @@ export default async function JobsPage({
   const { orgId } = await requireOrg();
   const { q } = await searchParams;
 
-  const jobs = await tenantDb(orgId).job.findMany({
-    where: {
-      deletedAt: null,
-      ...(q ? { title: { contains: q, mode: "insensitive" } } : {}),
-    },
-    include: { company: { select: { id: true, name: true } } },
-    orderBy: { jobNumber: "desc" },
-  });
+  const [jobs, batches, { currency }] = await Promise.all([
+    tenantDb(orgId).job.findMany({
+      where: {
+        deletedAt: null,
+        ...(q ? { title: { contains: q, mode: "insensitive" } } : {}),
+      },
+      include: { company: { select: { id: true, name: true } } },
+      orderBy: { jobNumber: "desc" },
+    }),
+    findBatchOpportunities(orgId),
+    readGeneralConfig(orgId),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -47,6 +54,55 @@ export default async function JobsPage({
           </Button>
         </div>
       </div>
+
+      {/* Batching is a suggestion, never an action — a consolidation
+          that wastes stock destroys trust the first time it is wrong,
+          so the caveats are shown with the saving, not behind it. */}
+      {batches.length > 0 ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-chart-2/40 bg-chart-2/5 p-4">
+          <div className="flex items-center gap-2">
+            <Layers className="size-4 text-chart-2" aria-hidden />
+            <h2 className="font-heading font-semibold">
+              Batching opportunities ({batches.length})
+            </h2>
+          </div>
+          {batches.slice(0, 3).map((batch) => (
+            <div
+              key={`${batch.stock}-${batch.colorMode}-${batch.finish}`}
+              className="flex flex-col gap-1.5 rounded-lg border bg-card p-3 text-sm"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-medium">{batch.rationale}</span>
+                {batch.savingCents !== null ? (
+                  <span className="font-mono font-semibold text-chart-2">
+                    ≈{formatMoney(batch.savingCents / 100, currency)}
+                  </span>
+                ) : null}
+              </div>
+              <div className="text-muted-foreground">
+                {batch.jobs
+                  .map(
+                    (j) =>
+                      `#${j.jobNumber} ${j.title} (${j.quantity.toLocaleString("sv-SE")}${
+                        j.piecesPerSheet ? `, ${j.piecesPerSheet}-up` : ""
+                      })`,
+                  )
+                  .join(" · ")}
+              </div>
+              {batch.runBy ? (
+                <div className="text-muted-foreground">
+                  Must run by {batch.runBy.toLocaleDateString("sv-SE")}
+                </div>
+              ) : null}
+              <ul className="list-disc pl-5 text-xs text-muted-foreground">
+                {batch.caveats.map((c) => (
+                  <li key={c}>{c}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <form className="flex gap-2" action="/jobs">
         <Input

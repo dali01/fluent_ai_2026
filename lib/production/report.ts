@@ -1,4 +1,5 @@
 import { tenantDb } from "@/lib/db/tenant";
+import { suggestBatches, type BatchSuggestion } from "./batching";
 import {
   analyzeCycleTime,
   onTimeRate,
@@ -99,5 +100,66 @@ export async function estimateJobTurnaround(
     },
     bookings,
     hours,
+  });
+}
+
+/**
+ * Batching opportunities across the open board, for the press with
+ * capability data (or the job's assigned press where set).
+ */
+export async function findBatchOpportunities(
+  orgId: string,
+  now: Date = new Date(),
+): Promise<BatchSuggestion[]> {
+  const db = tenantDb(orgId);
+  const [press, jobs] = await Promise.all([
+    db.press.findFirst({
+      where: { deletedAt: null, active: true, makereadySheets: { not: null } },
+      orderBy: { sheetsPerHour: "desc" },
+    }),
+    db.job.findMany({
+      where: { deletedAt: null, status: { notIn: ["DONE", "SHIPPING"] } },
+      select: {
+        id: true,
+        jobNumber: true,
+        title: true,
+        quantity: true,
+        stock: true,
+        colorMode: true,
+        finish: true,
+        widthMm: true,
+        heightMm: true,
+        dueDate: true,
+        status: true,
+      },
+      take: 200,
+    }),
+  ]);
+  if (!press) return [];
+
+  // Cheapest paper on hand is a reasonable stand-in for sheet cost;
+  // omitted entirely when nothing is priced, so no saving is invented.
+  const paper = await db.inventoryItem.findFirst({
+    where: { deletedAt: null, type: "PAPER", costPerUnit: { not: null } },
+    orderBy: { costPerUnit: "asc" },
+    select: { costPerUnit: true },
+  });
+
+  return suggestBatches({
+    jobs: jobs.map((j) => ({
+      ...j,
+      widthMm: j.widthMm ? Number(j.widthMm) : null,
+      heightMm: j.heightMm ? Number(j.heightMm) : null,
+    })),
+    press: {
+      name: press.name,
+      sheetWidthMm: press.sheetWidthMm ? Number(press.sheetWidthMm) : null,
+      sheetHeightMm: press.sheetHeightMm ? Number(press.sheetHeightMm) : null,
+      makereadySheets: press.makereadySheets,
+      makereadyMinutes: press.makereadyMinutes,
+      hourlyRateCents: press.hourlyRateCents,
+    },
+    now,
+    costPerSheet: paper?.costPerUnit ? Number(paper.costPerUnit) : null,
   });
 }
