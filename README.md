@@ -99,9 +99,16 @@ database column. **Claude's job:** on demand, turn the factors into a rep
 brief — what the numbers mean for _this_ customer, a concrete next step,
 and an opener grounded in their real order history.
 
+Alongside them, a **compliance radar**: final labelling and packaging
+rules from the Federal Register, matched against your existing customers
+by industry, so a regulation with an effective date becomes a reprint
+conversation before your competitor has one. It matches one industry at
+a time and tells you which industry caught each customer — matching
+loosely is how a restaurant ends up flagged for a medical-device rule.
+
 ### 4. Production intelligence — the print-native part
 
-Four measurements a generic CRM cannot make, all computed from the
+Five measurements a generic CRM cannot make, all computed from the
 shop's own figures and all willing to say "not enough data":
 
 - **Turnaround promises.** Earliest feasible finish from press
@@ -127,6 +134,13 @@ shop's own figures and all willing to say "not enough data":
   jobs onto a shared sheet, and it says so — real imposition depends on
   grain, gripper and bleed the schema doesn't model, and a suggestion
   that wastes stock destroys trust the first time it's wrong.
+- **Demand forecasting.** Per-material consumption projected from your
+  own ledger: a monthly average, a quarter-over-quarter trend, and a
+  seasonal index only once twelve complete months exist. The current
+  partial month is excluded, because a half-finished month reads as
+  demand collapsing. It reports **days of cover** and states outright
+  that supplier lead time is unknown — it tells you how long stock
+  lasts, never when to order.
 
 ### 5. Prepress that speaks human
 
@@ -154,6 +168,13 @@ their jobs, their unpaid invoices. It is read-only by construction — it
 cannot discount, reschedule, promise, or change an order, it quotes
 prices as-is, and prompt-injection attempts are declined. Cross-customer
 and cross-tenant data are structurally unreachable, not filtered out.
+
+Turning a conversation into business stays an explicit customer act:
+**"Request a quote for this"** extracts a spec from what they already
+wrote and files it as a lead for a human to price. The chatbot never
+decides that someone is ready to buy, and the lead is created even when
+extraction fails — a customer asking for a quote must not be dropped
+because a model call was.
 
 ### 7. A weekly briefing that leads with what's wrong
 
@@ -362,7 +383,9 @@ lib/db            Prisma client + fail-closed tenant-scoped data access
 lib/auth          Clerk helpers (requireOrg)
 lib/ai            Claude client, AiTask cost runner, outreach/insights/
                   prepress/chat/RFQ extraction/briefing, spend reporting
-lib/insights      deterministic reorder + churn scoring, weekly KPI pack
+lib/insights      deterministic reorder + churn scoring, demand
+                  forecasting, weekly KPI pack
+lib/compliance    Federal Register rules matched to customer industries
 lib/production    turnaround, cycle time, waste, batching — all pure
 lib/prospecting   lead sourcing: connectors, dedupe, relevance, scoring, pipeline
 lib/prepress      deterministic artwork checks

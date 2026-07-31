@@ -1,9 +1,10 @@
 # AI roadmap — proposal
 
-**Status: Tier 1 and Tier 2 are built.** All six steps of §6 shipped on
-2026-07-31 — the schema foundation, RFQ intake, the AI spend panel, the
-weekly owner briefing, turnaround promises, bottleneck analytics, waste
-estimates and gang-run batching. Only Tier 3 remains.
+**Status: built in full.** All six steps of §6 shipped on 2026-07-31 —
+the schema foundation, RFQ intake, the AI spend panel, the weekly owner
+briefing, turnaround promises, bottleneck analytics, waste estimates and
+gang-run batching — followed by all three Tier 3 items (§4): demand
+forecasting, portal quote requests and the compliance radar.
 
 The document is kept as written so the reasoning stays reviewable: the
 blockers in §1 are what made the ordering what it is.
@@ -178,18 +179,30 @@ exist. This is the feature most likely to change how the shop is run.
 
 ---
 
-## 4. Tier 3 — later
+## 4. Tier 3 — **done**
 
-- **Demand forecasting** (`DEMAND_FORECAST`) — seasonal per-category
-  demand from job history, driving paper purchasing. Weak without
-  supplier lead times (no vendor↔item relation exists today).
-- **Portal chat → quote request** — the chatbot detects buying intent and
-  drafts an RFQ for a CSR to confirm. Depends on 1.1.
-- **Compliance radar** — Federal Register final rules on labelling
-  matched against existing customers' categories, producing "these six
-  food customers must reprint by <date>" upsell signals. Deliberately
-  _not_ a prospecting source, because rules name industries, not
-  companies (see TODO-FUTURE.md).
+- ~~**Demand forecasting** (`DEMAND_FORECAST`)~~ **done** — `/inventory`.
+  Monthly average from the `StockMovement` ledger, a
+  quarter-over-quarter trend, and a seasonal index only once twelve
+  complete months exist. The lead-time weakness predicted here turned
+  out to be the design constraint: the forecast reports **days of
+  cover**, never a purchase date, and every line says so. The current
+  partial month is excluded — a half-finished month otherwise reads as
+  demand collapsing.
+- ~~**Portal chat → quote request**~~ **done** — but inverted. The
+  chatbot does _not_ detect intent; intent detection would mean guessing
+  when a customer wants to be sold to. Instead the customer presses
+  **"Request a quote for this"**, which extracts a spec from what they
+  already wrote and files a `QUOTE_REQUESTED` lead for a human to price.
+  The lead is created even when extraction fails.
+- ~~**Compliance radar**~~ **done** — `/insights`. Federal Register final
+  rules matched against existing customers by industry, one industry at
+  a time. Running it live immediately proved the matching had to be that
+  strict: the FDA's own name in the agency boilerplate made every device
+  rule register as a _food_ rule, and matching the union of a rule's
+  affected industries let a restaurant match a medical-device
+  regulation. Precision on the same feed went from 21 matches to 2. Both
+  bugs are regression-tested.
 
 ---
 
@@ -230,5 +243,9 @@ Not "later" — rejected on principle, so they don't get proposed again:
    is now addressable rather than fixed: recording actuals is optional,
    so the measurement fills in only for shops that use it.
 
-Each step is independently shippable and independently useful, which is
+7. ~~**Tier 3** (§4)~~ **done** — demand forecasting, portal quote
+   requests and the compliance radar. No migration was needed; the
+   ledger and the customer tags already held everything required.
+
+Each step was independently shippable and independently useful, which is
 the same sequencing rule the prospecting work followed.
